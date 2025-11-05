@@ -7,8 +7,8 @@ const nextConfig = {
   trailingSlash: true,
   images: { unoptimized: true },
   basePath: isCI ? repoBase : '',
-  assetPrefix: isCI ? repoBase + '/' : '',
-  // Чтобы роуты App Router корректно экспортировались
+  assetPrefix: isCI ? repoBase : '',
+  reactStrictMode: true
 };
 
 module.exports = nextConfig;
