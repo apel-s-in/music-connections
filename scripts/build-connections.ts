@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
-import fs from "fs";
-import path from "path";
+const fs = require("fs");
+const path = require("path");
 
 const ROOT = process.cwd();
 const outDir = path.join(ROOT, "public", "data");
