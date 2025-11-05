@@ -1,0 +1,156 @@
+name: Generate Context (.meta)
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - ".meta/**"
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - ".meta/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: generate-context-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      COMMIT_TO_MAIN: ${{ vars.COMMIT_TO_MAIN || 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Run generator (with fallback)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .meta
+          FALLBACK=0
+          if [ -f scripts/generate-context.js ]; then
+            echo "Found scripts/generate-context.js -> running"
+            node scripts/generate-context.js --mode=both --max-lines=20000 || FALLBACK=1
+          else
+            FALLBACK=1
+          fi
+
+          if [ "${FALLBACK}" = "1" ]; then
+            echo "Local generator failed or missing -> running inline fallback"
+            node - <<'NODE'
+            const fs = require('fs'); const path = require('path');
+            const ROOT = process.cwd(); const META = path.join(ROOT, '.meta');
+            if (!fs.existsSync(META)) fs.mkdirSync(META, { recursive: true });
+            function toUnix(p){return p.replace(/\\/g,'/');}
+            function isText(file){
+              const t = file.toLowerCase();
+              return ['.ts','.tsx','.js','.jsx','.json','.yaml','.yml','.md','.css','.scss','.less','.txt','.html','.webmanifest','.yml','.env'].some(e=>t.endsWith(e));
+            }
+            function listFiles(){
+              const exclude = ['node_modules','/.git/','/.next/','/dist/','/build/','/out/','/coverage/','/.meta/','/.vscode/','/.idea/'];
+              const res=[]; const stack=[ROOT];
+              while(stack.length){
+                const d=stack.pop(); let ents=[];
+                try{ents=fs.readdirSync(d,{withFileTypes:true});}catch{continue;}
+                for(const it of ents){
+                  const full=path.join(d,it.name); const rel = toUnix(path.relative(ROOT, full)) || '.';
+                  if (exclude.some(x => rel.includes(toUnix(x)))) continue;
+                  try{
+                    if(it.isDirectory()) stack.push(full);
+                    else if(it.isFile()) res.push(rel);
+                  }catch{}
+                }
+              }
+              return res.sort();
+            }
+            const header = `Context fallback file
+Generated: ${new Date().toISOString()}
+`;
+            // project-full
+            let full = header + "# TREE (limited)\n";
+            function tree(dir, prefix="", depth=0){
+              if (depth>3){ full += prefix+"└── ...\n"; return; }
+              let items=[]; try{items=fs.readdirSync(dir);}catch{return;}
+              items.sort().forEach((name,i)=>{
+                const fullp=path.join(dir,name);
+                const rel=toUnix(path.relative(ROOT, fullp)) || '.';
+                if (['node_modules','.git','.next','dist','build','out','.meta','coverage','.vscode','.idea'].includes(name)) return;
+                const last = i===items.length-1;
+                const pre = prefix + (last?"└── ":"├── ");
+                try{
+                  const st=fs.statSync(fullp);
+                  if (st.isDirectory()){ full += pre+name+"/\n"; tree(fullp, prefix+(last?"    ":"│   "), depth+1); }
+                  else { full += pre+name+"\n"; }
+                }catch{}
+              });
+            }
+            tree(ROOT);
+
+            full += "\n# FILES\n";
+            const files = listFiles();
+            for (const f of files){
+              const p = path.join(ROOT,f);
+              let body = '';
+              if (isText(f)) {
+                try{ body = fs.readFileSync(p,'utf8'); }catch(e){ body = `// read error: ${e.message}`; }
+              } else {
+                try{
+                  const st = fs.statSync(p);
+                  body = `// binary or non-text file (${Math.round(st.size/1024)} KB)`;
+                }catch{ body='// unknown file';}
+              }
+              full += `\n// ---- FILE: ${f} ----\n` + body + "\n";
+            }
+            fs.writeFileSync(path.join(META,'project-full.txt'), full, 'utf8');
+
+            // Adaptive (компактно)
+            let adaptive = header + "# COMPACT STRUCTURE\n";
+            const dirMap = new Map();
+            for (const f of files) {
+              const d = toUnix(path.dirname(f));
+              const b = path.basename(f);
+              if (!dirMap.has(d)) dirMap.set(d,[]);
+              dirMap.get(d).push(b);
+            }
+            for (const d of Array.from(dirMap.keys()).sort()) {
+              adaptive += (d==='.'?'/':d+'/') + ' ' + dirMap.get(d).sort().join(', ') + "\n";
+            }
+            fs.writeFileSync(path.join(META,'project-adaptive.txt'), adaptive, 'utf8');
+            console.log('Fallback generation done.');
+            NODE
+          fi
+
+      - name: Commit .meta on push
+        if: github.event_name == 'push' && env.COMMIT_TO_MAIN == 'true'
+        run: |
+          set -e
+          if [ -n "$(git status --porcelain .meta)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .meta
+            git commit -m "chore(meta): update project context"
+            git push
+          else
+            echo "No changes in .meta"
+          fi
+
+      - name: Upload .meta as artifact on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: meta-files
+          path: .meta/
