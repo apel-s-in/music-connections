@@ -32,7 +32,7 @@ MVP (Этап 1): без админки/ИИ/PDF; RU полностью; име�
 - Если удаляем блок — укажи строку перед и строку после (из реального кода).
 - Всегда пиши краткое обоснование, что и почему делаем.
 
-Сгенерировано: 2025-11-05 20:17:13 UTC
+Сгенерировано: 2025-11-05 20:17:52 UTC
 Версия проекта: 0.1.0
 
 // FILE: /.github/workflows/auto-sync.yml
@@ -263,6 +263,32 @@ export async function loadDataset(): Promise<Dataset> {
       version: "data-0"
     };
   }
+}
+
+
+// FILE: /src/lib/offline.ts
+import { openDB } from "idb";
+
+const DB_NAME = "music-connections";
+const STORE_FAVORITES = "favorites";
+
+export async function db() {
+  return openDB(DB_NAME, 1, {
+    upgrade(d) {
+      d.createObjectStore(STORE_FAVORITES);
+    }
+  });
+}
+
+export async function setFavorite(id: string, on: boolean) {
+  const d = await db();
+  if (on) await d.put(STORE_FAVORITES, true, id);
+  else await d.delete(STORE_FAVORITES, id);
+}
+
+export async function isFavorite(id: string) {
+  const d = await db();
+  return Boolean(await d.get(STORE_FAVORITES, id));
 }
 
 
