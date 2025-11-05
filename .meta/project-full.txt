@@ -32,7 +32,7 @@ MVP (Этап 1): без админки/ИИ/PDF; RU полностью; име�
 - Если удаляем блок — укажи строку перед и строку после (из реального кода).
 - Всегда пиши краткое обоснование, что и почему делаем.
 
-Сгенерировано: 2025-11-05 22:48:10 UTC
+Сгенерировано: 2025-11-05 22:49:49 UTC
 Версия проекта: 0.1.0
 
 // FILE: /.github/scripts/fallback-generate-context.js
@@ -3097,9 +3097,15 @@ try { main(); } catch (e) { console.error("❌ Ошибка:", e); process.exit(
 // FILE: /src/app/Controls.tsx
 "use client";
 import { useEffect } from "react";
-import { withBase } from "@/lib/basePath";
 
 export default function Controls() {
+  useEffect(() => {
+    // Регистрация SW
+    if ("serviceWorker" in navigator) {
+      const base = document.querySelector('base')?.getAttribute('href') || '/';
+      const swPath = base.endsWith('/') ? `${base}sw.js` : `${base}/sw.js`;
+      navigator.serviceWorker.register(swPath).catch(() => {});
+    }
   useEffect(() => {
     // Контрастность
     const saved = localStorage.getItem("contrast");
