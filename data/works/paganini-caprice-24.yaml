@@ -1,0 +1,4 @@
+kind: Work
+id: W0001
+names: { ru: "Каприс №24", en: "Caprice No. 24", orig: "Capriccio n.24" }
+attrs: { composer: "paganini", year: 1805 }
