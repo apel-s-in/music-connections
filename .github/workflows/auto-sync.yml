@@ -27,40 +27,78 @@ jobs:
         with:
           node-version: "18"
 
-      - name: Build .meta (use repo script if present, else fallback)
-        shell: bash
+      - name: Run repo generator (continue on error)
+        id: repo_gen
+        continue-on-error: true
         run: |
-          set -euo pipefail
           mkdir -p .meta
           if [ -f scripts/generate-context.js ]; then
             node scripts/generate-context.js --mode=both --max-lines=20000
           else
-            cat > _fallback-generate-context.js <<'JS'
-            const fs=require('fs'); const path=require('path');
-            const ROOT=process.cwd(); const META=path.join(ROOT,'.meta');
-            if(!fs.existsSync(META)) fs.mkdirSync(META,{recursive:true});
-            function toUnix(p){return p.replace(/\\/g,'/');}
-            function isText(f){const t=f.toLowerCase(); return ['.ts','.tsx','.js','.jsx','.json','.yaml','.yml','.md','.css','.scss','.less','.txt','.html','.webmanifest','.env'].some(e=>t.endsWith(e));}
-            function listFiles(){const ex=['node_modules','/.git/','/.next/','/dist/','/build/','/out/','/coverage/','/.meta/'];
-              const res=[]; const st=[ROOT]; while(st.length){const d=st.pop(); let es=[]; try{es=fs.readdirSync(d,{withFileTypes:true});}catch{continue;}
-                for(const it of es){const f=path.join(d,it.name); const r=toUnix(path.relative(ROOT,f))||'.'; if(ex.some(x=>r.includes(toUnix(x)))) continue; try{ if(it.isDirectory()) st.push(f); else if(it.isFile()) res.push(r);}catch{}}
-              } return res.sort();}
-            const files=listFiles();
-            let full="Context fallback\\nGenerated: "+new Date().toISOString()+"\\n";
-            for(const f of files){const p=path.join(ROOT,f); let body=''; if(isText(f)){try{body=fs.readFileSync(p,'utf8');}catch(e){body='// read error: '+e.message}} else { body='// non-text';}
-              full+="\\n// FILE: "+f+"\\n"+body+"\\n";}
-            fs.writeFileSync(path.join(META,'project-full.txt'), full, 'utf8');
-            let adaptive="# COMPACT STRUCTURE\\n";
-            const dirMap=new Map();
-            for(const f of files){const d=toUnix(path.dirname(f)); const b=path.basename(f); if(!dirMap.has(d)) dirMap.set(d,[]); dirMap.get(d).push(b);}
-            for(const d of Array.from(dirMap.keys()).sort()){adaptive+=(d==='.'?'/':d+'/')+' '+dirMap.get(d).sort().join(', ')+"\\n";}
-            fs.writeFileSync(path.join(META,'project-adaptive.txt'), adaptive, 'utf8');
-            JS
-            node _fallback-generate-context.js
+            echo "scripts/generate-context.js not found"
+            exit 2
           fi
 
-      - name: Publish to meta branch
-        shell: bash
+      - name: Fallback generator (actions/github-script)
+        if: steps.repo_gen.outcome != 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const ROOT = process.env.GITHUB_WORKSPACE || process.cwd();
+            const META = path.join(ROOT, '.meta');
+            if (!fs.existsSync(META)) fs.mkdirSync(META, { recursive: true });
+
+            const excludeHints = ['node_modules','/.git/','/.next/','/dist/','/build/','/out/','/coverage/','/.meta/'];
+            const textExts = ['.ts','.tsx','.js','.jsx','.json','.yaml','.yml','.md','.css','.scss','.less','.txt','.html','.webmanifest','.env','.env.example'];
+            const toUnix = p => p.replace(/\\/g, '/');
+            const isText = f => textExts.some(e => f.toLowerCase().endsWith(e));
+            const listFiles = () => {
+              const res=[]; const stack=[ROOT];
+              while (stack.length) {
+                const d = stack.pop();
+                let ents=[]; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { continue; }
+                for (const it of ents) {
+                  const full = path.join(d, it.name);
+                  const rel = toUnix(path.relative(ROOT, full)) || '.';
+                  if (excludeHints.some(x => rel.includes(toUnix(x)))) continue;
+                  try { if (it.isDirectory()) stack.push(full); else if (it.isFile()) res.push(rel); } catch {}
+                }
+              }
+              return res.sort();
+            };
+
+            const files = listFiles();
+            let full = `Context fallback
+            Generated: ${new Date().toISOString()}\n`;
+            for (const f of files) {
+              const p = path.join(ROOT, f);
+              let body = '';
+              if (isText(f)) {
+                try { body = fs.readFileSync(p, 'utf8'); } catch (e) { body = `// read error: ${e.message}`; }
+              } else {
+                body = '// non-text';
+              }
+              full += `\n// FILE: ${f}\n${body}\n`;
+            }
+            if (!fs.existsSync(META)) fs.mkdirSync(META, { recursive: true });
+            fs.writeFileSync(path.join(META, 'project-full.txt'), full, 'utf8');
+
+            let adaptive = "# COMPACT STRUCTURE\n";
+            const dirMap = new Map();
+            for (const f of files) {
+              const d = toUnix(path.dirname(f));
+              const b = path.basename(f);
+              if (!dirMap.has(d)) dirMap.set(d, []);
+              dirMap.get(d).push(b);
+            }
+            for (const d of Array.from(dirMap.keys()).sort()) {
+              adaptive += (d==='.'?'/':d+'/') + ' ' + dirMap.get(d).sort().join(', ') + "\n";
+            }
+            fs.writeFileSync(path.join(META, 'project-adaptive.txt'), adaptive, 'utf8');
+
+      - name: Publish .meta to 'meta' branch
         run: |
           set -e
           BRANCH=meta
