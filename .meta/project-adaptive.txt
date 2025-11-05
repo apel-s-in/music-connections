@@ -32,7 +32,7 @@ MVP (Этап 1): без админки/ИИ/PDF; RU полностью; име�
 - Если удаляем блок — укажи строку перед и строку после (из реального кода).
 - Всегда пиши краткое обоснование, что и почему делаем.
 
-Сгенерировано: 2025-11-05 20:15:59 UTC
+Сгенерировано: 2025-11-05 20:16:40 UTC
 Версия проекта: 0.1.0
 
 // FILE: /.github/workflows/auto-sync.yml
@@ -614,4 +614,19 @@ function main(){
 }
 
 try { main(); } catch (e) { console.error("❌ Ошибка:", e); process.exit(1); }
+
+
+// FILE: /src/lib/basePath.ts
+export function basePath() {
+  // На CI и в собранном экспорте Next сам подставит basePath/assetPrefix,
+  // но для fetch удобно явно строить относительный путь.
+  const bp = (typeof window !== "undefined" && (window as any).__BASE_PATH__) || "";
+  return bp;
+}
+
+export function withBase(path: string) {
+  const bp = basePath();
+  if (!bp) return path;
+  return path.startsWith("/") ? `${bp}${path}` : `${bp}/${path}`;
+}
 
