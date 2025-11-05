@@ -32,7 +32,7 @@ MVP (Этап 1): без админки/ИИ/PDF; RU полностью; име�
 - Если удаляем блок — укажи строку перед и строку после (из реального кода).
 - Всегда пиши краткое обоснование, что и почему делаем.
 
-Сгенерировано: 2025-11-05 20:23:59 UTC
+Сгенерировано: 2025-11-05 20:24:25 UTC
 Версия проекта: 0.1.0
 
 // FILE: /.github/scripts/fallback-generate-context.js
@@ -423,6 +423,57 @@ self.addEventListener("fetch", (e) => {
   // cache-first для статики
   e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
 });
+
+
+// FILE: /schema/properties.yaml
+properties:
+  - id: P1
+    key: birth_date
+    label: { ru: Дата рождения, en: Date of birth }
+    domain: [Person]
+    valueType: date
+    cardinality: "0..1"
+  - id: P2
+    key: death_date
+    label: { ru: Дата смерти, en: Date of death }
+    domain: [Person]
+    valueType: date
+    cardinality: "0..1"
+  - id: P100
+    key: performed_work
+    label: { ru: Исполнял произведение, en: Performed work }
+    domain: [Person]
+    valueType: ref:Work
+    cardinality: "0..*"
+    qualifiers:
+      - { id: PQ1, key: date, valueType: date }
+      - { id: PQ2, key: place, valueType: ref:Place }
+  - id: P110
+    key: used_instrument
+    label: { ru: Играл на инструменте, en: Used instrument }
+    domain: [Person]
+    valueType: ref:Instrument
+    cardinality: "0..*"
+    qualifiers:
+      - { id: PQ1, key: start, valueType: date }
+      - { id: PQ2, key: end, valueType: date }
+  - id: P200
+    key: residence
+    label: { ru: Проживание, en: Residence }
+    domain: [Person]
+    valueType: ref:Place
+    cardinality: "0..*"
+    qualifiers:
+      - { id: PQ1, key: start, valueType: date }
+      - { id: PQ2, key: end, valueType: date }
+      - { id: PQ3, key: type, valueType: enum, options: [residence, visit] }
+  - id: P300
+    key: teacher_of
+    label: { ru: Учитель, en: Teacher of }
+    domain: [Person]
+    valueType: ref:Person
+    cardinality: "0..*"
+    direction: forward
 
 
 // FILE: /scripts/generate-context.js
