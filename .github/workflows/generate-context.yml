@@ -56,19 +56,48 @@ jobs:
             const META = path.join(ROOT, '.meta');
             if (!fs.existsSync(META)) fs.mkdirSync(META, { recursive: true });
 
-            const excludeHints = ['node_modules','/.git/','/.next/','/dist/','/build/','/out/','/coverage/','/.meta/','.vscode','.idea'];
-            const textExts = ['.ts','.tsx','.js','.jsx','.json','.yaml','.yml','.md','.css','.scss','.less','.txt','.html','.webmanifest','.env','.env.example'];
+            const BLOCK_DIRS = new Set([
+              'node_modules','.git','.next','dist','build','out','coverage','.meta',
+              '.vscode','.idea','.cache','.husky'
+            ]);
+            const ALLOW_DOT_DIRS = new Set(['.github']); // .github оставляем
+            const TEXT_EXTS = new Set([
+              '.ts','.tsx','.js','.jsx','.json','.yaml','.yml','.md','.css','.scss','.less',
+              '.txt','.html','.webmanifest','.env','.env.example','.yml'
+            ]);
             const toUnix = p => p.replace(/\\/g, '/');
-            const isText = f => textExts.some(e => f.toLowerCase().endsWith(e));
-            const listFiles = () => {
-              const res=[]; const stack=[ROOT];
+
+            function shouldSkip(rel, name, isDir) {
+              const u = toUnix(rel);
+              // Явные системные каталоги в любом месте пути
+              for (const b of BLOCK_DIRS) {
+                if (u === b || u.startsWith(`${b}/`) || u.includes(`/${b}/`)) return true;
+              }
+              if (isDir) {
+                // Любая скрытая папка, кроме whitelisted (.github)
+                if (name.startsWith('.') && !ALLOW_DOT_DIRS.has(name)) return true;
+              }
+              return false;
+            }
+
+            function isText(file) {
+              const low = file.toLowerCase();
+              for (const ext of TEXT_EXTS) if (low.endsWith(ext)) return true;
+              return false;
+            }
+
+            function listFiles() {
+              const res = [];
+              const stack = [ROOT];
               while (stack.length) {
                 const d = stack.pop();
-                let ents=[]; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { continue; }
+                let ents = [];
+                try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { continue; }
                 for (const it of ents) {
                   const full = path.join(d, it.name);
                   const rel = toUnix(path.relative(ROOT, full)) || '.';
-                  if (excludeHints.some(x => rel.includes(toUnix(x)))) continue;
+                  const skip = shouldSkip(rel, it.name, it.isDirectory());
+                  if (skip) continue;
                   try {
                     if (it.isDirectory()) stack.push(full);
                     else if (it.isFile()) res.push(rel);
@@ -76,19 +105,24 @@ jobs:
                 }
               }
               return res.sort();
-            };
+            }
 
             // FULL
             const files = listFiles();
-            let full = `Context fallback file
-            Generated: ${new Date().toISOString()}
 
-            # TREE (approx)
-            `;
-            // simple tree
-            const dirs = new Set(files.map(f => toUnix(path.dirname(f))));
-            const treeLines = Array.from(dirs).sort().map(d => (d === '.' ? '/' : d + '/'));
-            full += treeLines.join('\n') + '\n\n# FILES\n';
+            // Простейшее дерево из уникальных директорий
+            const dirSet = new Set(files.map(f => toUnix(path.dirname(f))));
+            const treeLines = Array.from(dirSet).sort().map(d => (d === '.' ? '/' : d + '/'));
+
+            let full = `Context fallback file
+Generated: ${new Date().toISOString()}
+
+# TREE (approx)
+${treeLines.join('\n')}
+
+# FILES
+`;
+
             for (const f of files) {
               const p = path.join(ROOT, f);
               let body = '';
@@ -116,7 +150,7 @@ jobs:
             }
             fs.writeFileSync(path.join(META, 'project-adaptive.txt'), adaptive, 'utf8');
 
-            core.info('Fallback generation done.');
+            core.info('Fallback generation done (with .git excluded).');
 
       - name: Commit .meta on push to main
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
