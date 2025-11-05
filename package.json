@@ -4,14 +4,13 @@
   "private": true,
   "description": "Музыкальные связи — PWA (Next.js static export). Таймлайн, граф, карта. RU/EN/ORIG.",
   "scripts": {
-  "scripts": {
     "dev": "next dev",
     "build:data": "node scripts/build-connections.js",
     "build": "npm run build:data && next build",
     "start": "serve out -p 3000",
-    "generate:context": "node scripts/generate-context.js --mode=both --max-lines=20000",
-    "build:data": "node scripts/build-connections.js"
+    "generate:context": "node scripts/generate-context.js"
   },
+
   "dependencies": {
     "@xyflow/react": "12.9.2",
     "clsx": "2.1.1",
