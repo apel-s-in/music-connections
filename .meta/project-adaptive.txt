@@ -32,7 +32,7 @@ MVP (Этап 1): без админки/ИИ/PDF; RU полностью; име�
 - Если удаляем блок — укажи строку перед и строку после (из реального кода).
 - Всегда пиши краткое обоснование, что и почему делаем.
 
-Сгенерировано: 2025-11-05 20:21:18 UTC
+Сгенерировано: 2025-11-05 20:22:10 UTC
 Версия проекта: 0.1.0
 
 // FILE: /.github/workflows/auto-sync.yml
@@ -236,6 +236,22 @@ module.exports = nextConfig;
     "node": ">=18"
   },
   "license": "MIT"
+}
+
+
+// FILE: /public/manifest.webmanifest
+{
+  "name": "Музыкальные связи",
+  "short_name": "Связи",
+  "start_url": "/music-connections/",
+  "scope": "/music-connections/",
+  "display": "standalone",
+  "background_color": "#0b1020",
+  "theme_color": "#7c3aed",
+  "icons": [
+    { "src": "/music-connections/icons/app-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/music-connections/icons/app-icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
 }
 
 
