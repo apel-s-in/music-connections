@@ -32,7 +32,7 @@ MVP (Этап 1): без админки/ИИ/PDF; RU полностью; име�
 - Если удаляем блок — укажи строку перед и строку после (из реального кода).
 - Всегда пиши краткое обоснование, что и почему делаем.
 
-Сгенерировано: 2025-11-05 21:30:07 UTC
+Сгенерировано: 2025-11-05 21:40:11 UTC
 Версия проекта: 0.1.0
 
 // FILE: /.github/scripts/fallback-generate-context.js
@@ -3093,6 +3093,40 @@ function main(){
 }
 
 try { main(); } catch (e) { console.error("❌ Ошибка:", e); process.exit(1); }
+
+
+// FILE: /src/app/Controls.tsx
+"use client";
+import { useEffect } from "react";
+import { withBase } from "@/lib/basePath";
+
+export default function Controls() {
+  useEffect(() => {
+    // Контрастность
+    const saved = localStorage.getItem("contrast");
+    if (saved === "high") document.documentElement.setAttribute("data-contrast", "high");
+    // SW
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register(withBase("/sw.js")).catch(() => {});
+    }
+    // base path для fetch (fetch корректно обработает)
+    (window as any).__BASE_PATH__ = (document.querySelector('base')?.getAttribute('href') || "").replace(/\/$/, "");
+  }, []);
+
+  return (
+    <div style={{ display: "flex", gap: 8 }}>
+      <button onClick={() => {
+        const curr = document.documentElement.getAttribute("data-contrast");
+        const next = curr === "high" ? null : "high";
+        if (next) document.documentElement.setAttribute("data-contrast", next);
+        else document.documentElement.removeAttribute("data-contrast");
+        localStorage.setItem("contrast", next ? "high" : "normal");
+      }}>
+        Контраст
+      </button>
+    </div>
+  );
+}
 
 
 // FILE: /src/app/globals.css
