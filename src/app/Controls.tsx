@@ -1,8 +1,14 @@
 "use client";
 import { useEffect } from "react";
-import { withBase } from "@/lib/basePath";
 
 export default function Controls() {
+  useEffect(() => {
+    // Регистрация SW
+    if ("serviceWorker" in navigator) {
+      const base = document.querySelector('base')?.getAttribute('href') || '/';
+      const swPath = base.endsWith('/') ? `${base}sw.js` : `${base}/sw.js`;
+      navigator.serviceWorker.register(swPath).catch(() => {});
+    }
   useEffect(() => {
     // Контрастность
     const saved = localStorage.getItem("contrast");
