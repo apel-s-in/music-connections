@@ -1,6 +1,4 @@
 import "./globals.css";
-import Link from "next/link";
-import { withBase } from "@/lib/basePath";
 import { ReactNode } from "react";
 import Controls from "./Controls";
 import type { Metadata } from 'next';
