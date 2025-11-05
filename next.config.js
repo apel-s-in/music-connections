@@ -9,9 +9,6 @@ const nextConfig = {
   basePath: isCI ? repoBase : '',
   assetPrefix: isCI ? repoBase + '/' : '',
   // Чтобы роуты App Router корректно экспортировались
-  experimental: {
-    typedRoutes: true
-  }
 };
 
 module.exports = nextConfig;
