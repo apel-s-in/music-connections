@@ -1,0 +1,577 @@
+/* eslint-disable no-console */
+"use strict";
+
+/**
+ * Автономный генератор контекста проекта для репозитория:
+ *   https://github.com/apel-s-in/music-connections
+ *
+ * Создает:
+ *   - .meta/project-full.txt       (структура + полные текстовые файлы, бинарные — кратко)
+ *   - .meta/project-adaptive.txt   (компактная структура + ключевые файлы по приоритетам)
+ *
+ * Особенности:
+ *   - Без внешних зависимостей (только встроенные модули Node.js).
+ *   - CLI: --mode, --max-lines, --root, --out-dir, --include, --exclude.
+ *   - .mccontextignore: дополнительные исключения (glob), не изменяя код.
+ *   - Приоритеты и структура — по ТЗ и вашему старому файлу.
+ *   - В заголовок встроены «Правила для нейросетей»: формат кода, стиль, ссылки на файлы, патчи.
+ */
+
+const fs = require("fs");
+const path = require("path");
+
+// --------------------- CLI ---------------------
+const argv = Object.fromEntries(
+  process.argv.slice(2).map((arg) => {
+    const [k, ...rest] = arg.replace(/^--/, "").split("=");
+    return [k, rest.join("=") === "" ? true : rest.join("=")];
+  })
+);
+
+const PROJECT_ROOT = path.resolve(argv.root || path.join(__dirname, ".."));
+const META_DIR = path.resolve(argv["out-dir"] || path.join(PROJECT_ROOT, ".meta"));
+const MODE = (argv.mode || "both").toLowerCase(); // full | adaptive | both
+const ADAPTIVE_MAX_LINES = Number(argv["max-lines"] || 20000);
+
+// Ensure .meta dir
+if (!fs.existsSync(META_DIR)) fs.mkdirSync(META_DIR, { recursive: true });
+
+const FULL_FILE = path.join(META_DIR, "project-full.txt");
+const ADAPTIVE_FILE = path.join(META_DIR, "project-adaptive.txt");
+
+// --------------------- Конфигурация (с учетом вашего старого файла) ---------------------
+const CONFIG = {
+  scanExclude: [
+    "node_modules/**",
+    ".git/**",
+    ".github/**/node_modules/**",
+    ".next/**",
+    "out/**",
+    "docs/**",
+    "build/**",
+    "dist/**",
+    "coverage/**",
+    "logs/**",
+    ".meta/**", // чтобы не зацикливаться
+    ".vscode/**",
+    ".idea/**",
+    "**/*.log",
+    "**/*.tmp",
+    ".DS_Store",
+    ".eslintcache",
+    ".prettiercache",
+    "ТЗ.txt",
+    "TZ.txt",
+    "tz.txt",
+    // Примечание: public/data/*.json НЕ исключаем по умолчанию, чтобы видеть индексы в контексте.
+    // При необходимости можете добавить в .mccontextignore.
+  ],
+  // Полные текстовые
+  fullContentTypes: [
+    ".ts", ".tsx", ".js", ".jsx",
+    ".yaml", ".yml", ".json", ".webmanifest",
+    ".css", ".scss", ".less",
+    ".md",
+    ".sh", ".bash",
+    ".env", ".env.example",
+    "Dockerfile",
+    ".dockerignore",
+    ".yml"
+  ],
+  // Краткие описания для бинарных/медиа
+  briefContentTypes: [
+    ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico",
+    ".ttf", ".woff", ".woff2", ".eot", ".otf",
+    ".mp3", ".wav", ".ogg", ".mp4", ".webm",
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".7z"
+  ],
+  // Приоритеты (адаптивный файл). Основаны на вашем старом файле + ТЗ.
+  priorityRules: {
+    critical: [
+      /^src\/app\/\(main\)\/layout\.tsx$/,
+      /^src\/app\/\(main\)\/page\.tsx$/,
+      /^src\/app\/\(main\)\/timeline\/page\.tsx$/,
+      /^src\/app\/manifest\.(ts|js)$/,
+
+      /^src\/components\/timeline\/Timeline(Scale)?\.tsx$/,
+      /^src\/components\/graph\/ConnectionGraph\.tsx$/,
+      /^src\/components\/map\/ConnectionsMap\.tsx$/,
+
+      /^src\/lib\/data-loader\.(ts|js)$/,
+      /^src\/lib\/offline\.(ts|js)$/,
+      /^src\/lib\/basePath\.(ts|js)$/,
+      /^src\/types\/dataset\.(ts|js)$/,
+
+      /^schema\/properties\.yaml$/,
+      /^scripts\/build-connections\.(ts|js)$/,
+
+      /^next\.config\.js$/,
+      /^package\.json$/,
+      /^tsconfig\.json$/,
+      /^tailwind\.config\.js$/,
+      /^postcss\.config\.js$/,
+
+      /^\.github\/workflows\/deploy-pages\.yml$/,
+      /^\.github\/workflows\/backup-to-yandex\.yml$/,
+      /^\.github\/workflows\/auto-sync\.yml$/,
+      /^\.github\/workflows\/generate-context\.yml$/
+    ],
+    high: [
+      /^data\/people\//,
+      /^data\/works\//,
+      /^data\/instruments\//,
+      /^data\/places\//,
+      /^data\/events\//,
+      /^data\/locales\//,
+      /^src\/i18n\/messages\//,
+      /^public\/icons\//,
+      /^src\/styles\/globals\.css$/,
+      /^src\/lib\/i18n\.(ts|js)$/,
+      /^README\.md$/
+    ],
+    medium: [
+      /^src\/components\/.*$/,
+      /^src\/app\/.*$/,
+      /^scripts\/generate-context\.(ts|js)$/,
+      /^\.github\/workflows\/.*$/,
+      /^public\/data\/.*$/,
+      /^public\/geo\/.*$/,
+      /^public\/manifest\.(json|webmanifest)$/
+    ]
+  },
+  adaptiveLimits: {
+    maxLines: ADAPTIVE_MAX_LINES,
+    criticalPercentage: 60,
+    highPercentage: 25,
+    mediumPercentage: 15
+  }
+};
+
+// --------------------- .mccontextignore (доп. игноры без правки кода) ---------------------
+function loadUserIgnore() {
+  const file = path.join(PROJECT_ROOT, ".mccontextignore");
+  if (!fs.existsSync(file)) return [];
+  try {
+    const raw = fs.readFileSync(file, "utf8");
+    return raw
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("#"));
+  } catch {
+    return [];
+  }
+}
+
+const EXTRA_EXCLUDE = loadUserIgnore();
+
+// --------------------- Утилиты ---------------------
+function toUnix(p) {
+  return p.replace(/\\/g, "/");
+}
+
+function globToRegExp(pattern) {
+  const esc = pattern
+    .replace(/[.+^${}()|[\]\\]/g, "\\$")
+    .replace(/\*\*/g, "___GLOBSTAR___")
+    .replace(/\*/g, "[^/]*")
+    .replace(/___GLOBSTAR___/g, ".*");
+  return new RegExp(`^${esc}$`);
+}
+
+const EXCLUDE_PATTERNS = CONFIG.scanExclude
+  .concat(EXTRA_EXCLUDE)
+  .map((p) => (p instanceof RegExp ? p : globToRegExp(p)));
+
+function isExcluded(filePath) {
+  const unixPath = toUnix(filePath);
+  return EXCLUDE_PATTERNS.some((re) => re.test(unixPath));
+}
+
+function getFileContentType(filePath) {
+  const lower = filePath.toLowerCase();
+  if (CONFIG.briefContentTypes.some((t) => lower.endsWith(t))) return "brief";
+  if (CONFIG.fullContentTypes.some((t) => lower.endsWith(t))) return "full";
+  return "full";
+}
+
+function getAllProjectFiles() {
+  const files = [];
+  const stack = [PROJECT_ROOT];
+
+  while (stack.length) {
+    const dir = stack.pop();
+    let items = [];
+    try {
+      items = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (e) {
+      console.warn(`⚠️ Не удалось прочитать директорию ${dir}: ${e.message}`);
+      continue;
+    }
+    for (const it of items) {
+      const full = path.join(dir, it.name);
+      const rel = toUnix(path.relative(PROJECT_ROOT, full)) || ".";
+      if (isExcluded(rel)) continue;
+
+      try {
+        if (it.isDirectory()) {
+          stack.push(full);
+        } else if (it.isFile()) {
+          files.push(rel);
+        }
+      } catch (e) {
+        console.warn(`⚠️ Ошибка доступа к ${full}: ${e.message}`);
+      }
+    }
+  }
+  return files.sort((a, b) => a.localeCompare(b));
+}
+
+function getFileContent(filePath, type = "full") {
+  try {
+    const fullPath = path.join(PROJECT_ROOT, filePath);
+    if (!fs.existsSync(fullPath)) {
+      return `// Файл не существует: ${filePath}`;
+    }
+    const stats = fs.statSync(fullPath);
+    const sizeKB = Math.round(stats.size / 1024);
+    const lastModified = new Date(stats.mtime).toISOString().split("T")[0];
+    const ext = path.extname(filePath).toLowerCase();
+
+    if (type === "brief") {
+      let description = "";
+      if (filePath.includes("/icons/")) description = "// Ресурс: иконка/изображение";
+      else if (filePath.includes("/geo/")) description = "// Ресурс: GeoJSON/TopoJSON";
+      else if (filePath.includes("/data/") && ext === ".json") description = "// Ресурс: сгенерированный JSON датасета";
+      return `// ФАЙЛ: ${filePath}
+// Размер: ${sizeKB} KB
+// Последнее изменение: ${lastModified}
+// Тип: ${ext || "n/a"}
+// ${description}
+`;
+    }
+
+    // full — без ограничений
+    return fs.readFileSync(fullPath, "utf8");
+  } catch (error) {
+    return `// Ошибка чтения файла ${filePath}: ${error.message}`;
+  }
+}
+
+function countLines(str) {
+  return (str.match(/\n/g) || []).length + (str.length ? 1 : 0);
+}
+
+function extractSignatures(content) {
+  const lines = content.split("\n");
+  const sig = [];
+  let inBlock = false;
+
+  for (const line of lines) {
+    const l = line.trim();
+    if (l.includes("/*")) inBlock = true;
+    if (l.includes("*/")) {
+      inBlock = false;
+      continue;
+    }
+    if (inBlock) continue;
+    if (l.startsWith("//")) continue;
+
+    if (
+      /^(export\s+)?(async\s+)?function\s+\w+\s*\(/.test(l) ||
+      /^(export\s+)?(const|let|var)\s+\w+\s*=\s*(async\s*)?\(/.test(l) ||
+      /^(export\s+)?class\s+\w+/.test(l) ||
+      /^(export\s+)?(type|interface)\s+\w+/.test(l)
+    ) {
+      sig.push(line);
+    }
+  }
+  return sig.length ? `// Сигнатуры/объявления:\n${sig.join("\n")}` : "// Нет сигнатур для извлечения";
+}
+
+function getFilePriority(filePath) {
+  const unix = toUnix(filePath);
+  for (const [level, patterns] of Object.entries(CONFIG.priorityRules)) {
+    if (patterns.some((re) => re.test(unix))) return level;
+  }
+  return "low";
+}
+
+// --------------------- Заголовок c правилами для нейросетей ---------------------
+function headerBlock() {
+  const timestamp = new Date().toISOString().replace("T", " ").substring(0, 19);
+  let version = "0.0.0";
+  try {
+    version = require(path.join(PROJECT_ROOT, "package.json")).version || version;
+  } catch {}
+
+  const overview = [
+    "Музыкальные Связи — PWA на Next.js 14 (App Router). Данные в YAML/JSON. Три экрана: Таймлайн (ленточки жизни и события), Граф связей (@xyflow/react), Карта (d3-geo, без политических границ).",
+    "Поиск: Fuse + фасеты. Локализация: RU/EN/ORIG с фоллбеком. PWA и офлайн-«избранное» (IndexedDB). Zero-backend, сборка данных на build-стадии.",
+  ].join("\n");
+
+  const llmRules = [
+    "ПРАВИЛА ДЛЯ НЕЙРОСЕТЕЙ (важно для качества ответов):",
+    "- Язык ответов: по умолчанию RU. Английский — если явно попросят или в именах/терминах.",
+    "- Всегда указывай точные пути файлов при ссылках (например, src/app/(main)/timeline/page.tsx).",
+    "- Любой код выводи ТОЛЬКО в тройных бэктиках с указанием языка, например:",
+    "  ```ts",
+    "  export function x() {}",
+    "  ```",
+    "- Не используй тяжелое форматирование. Разрешены: списки, короткие таблицы. Избегай сложной разметки.",
+    "- Если требуются изменения в файле — показывай минимальный патч (unified diff) или целиком обновлённый файл, но не смешивай.",
+    "- Не выдумывай зависимости и API. Если данных нет — явно скажи «нет данных/нужно уточнение».",
+    "- Перед предложением архитектурных решений проверяй совместимость библиотек (Next 14 App Router, @xyflow/react, d3, next-intl 3.x).",
+    "- Для команд терминала используй блоки ```bash, без интерактивных шагов. Секреты и токены не логируй; предлагай использовать переменные окружения.",
+    "- При ответах по i18n всегда учитывай RU/EN/ORIG и фоллбеки (ru -> en -> orig).",
+    "- При работе с датами придерживайся ISO 8601; поддерживай точность (год/месяц/день) и признак circa/календарь, как в типах.",
+    "- Для PDF: на MVP только print CSS. Полноценный PDF с CJK/RTL — позже (pdfmake/@react-pdf или серверный Puppeteer).",
+    "- В примерах кода придерживайся TypeScript strict, ESM/Next-стиля импорта и двух пробелов отступа.",
+    "- Если предлагаешь CI/Actions — учитывай, что сборка контекста должна работать автономно даже при сломанном приложении.",
+    "- НИКОГДА не генерируйте весь файл целиком - только конкретные блоки для замены. Указывай часть кода до вставки и полностью новый код после вставки. ",
+    "- ФОРМАТ для изменений: -> ФАЙЛ ДЛЯ ИЗМЕНЕНИЯ: путь/к/файлу.tsx НАЙТИ ЭТОТ БЛОК КОДА: [дословно скопировать] -> ЗАМЕНИТЬ НА ЭТОТ БЛОК: [полный новый блок с правильными отступами]",
+    "- СОХРАНЯЙТЕ: комментарии, форматирование, структуру импортов.",
+    "- Если удаляем часть кода, то точно указываем перед какой строкой начинается (настоящая из моего кода) и какая строка будет следующая после удаления (настоящая из моего кода).",
+    "- Всегда пиши максимально подробные пояснения, что и почему делаем.",
+  ].join("\n");
+
+  const howToContribute = [
+    "Как предлагать изменения:",
+    "- Новые свойства/связи: сперва добавь/измени запись в schema/properties.yaml (реестр Pxxx), затем используй в YAML в data/* как Statement.",
+    "- Новые данные: добавляй YAML в data/people|works|instruments|places|events, следуя схемам из типов.",
+    "- Сборка данных: скрипт scripts/build-connections.(ts|js) валидирует YAML (zod), строит edges из statements и пишет public/data/*.json.",
+    "- Патчи к коду: указывай точные пути файлов и давай минимальный diff. Если файл новый — покажи целиком.",
+  ].join("\n");
+
+  return [
+    "Пожалуйста, внимательно и полностью проанализируй приложение и используй правила ниже.",
+    overview,
+    "",
+    llmRules,
+    "",
+    howToContribute,
+    "",
+    `Сгенерировано: ${timestamp} UTC`,
+    `Версия проекта: ${version}`,
+    ""
+  ].join("\n");
+}
+
+// --------------------- Структура: дерево (FULL) ---------------------
+function generateProjectStructureTree() {
+  const structure = [];
+  const maxDepth = 4;
+
+  function walk(dir, prefix = "", depth = 0) {
+    if (depth > maxDepth) {
+      structure.push(`${prefix}└── [дополнительные файлы и папки...]`);
+      return;
+    }
+    let items;
+    try {
+      items = fs.readdirSync(dir).sort();
+    } catch (e) {
+      structure.push(`${prefix}└── [ошибка чтения: ${e.message}]`);
+      return;
+    }
+
+    const filtered = items.filter((name) => {
+      const full = path.join(dir, name);
+      const rel = toUnix(path.relative(PROJECT_ROOT, full)) || ".";
+      return !isExcluded(rel);
+    });
+
+    filtered.forEach((item, index) => {
+      const full = path.join(dir, item);
+      const rel = toUnix(path.relative(PROJECT_ROOT, full));
+      const isLast = index === filtered.length - 1;
+      const currentPrefix = prefix + (isLast ? "└── " : "├── ");
+
+      let stat;
+      try {
+        stat = fs.statSync(full);
+      } catch (e) {
+        structure.push(`${currentPrefix}[ошибка stat: ${e.message}]`);
+        return;
+      }
+
+      if (stat.isDirectory()) {
+        structure.push(`${currentPrefix}${item}/`);
+        walk(full, prefix + (isLast ? "    " : "│   "), depth + 1);
+      } else {
+        structure.push(`${currentPrefix}${item}`);
+      }
+    });
+  }
+
+  walk(PROJECT_ROOT);
+  return structure.join("\n");
+}
+
+// --------------------- Структура: компактная (ADAPTIVE) ---------------------
+function generateCompactStructure() {
+  const allFiles = getAllProjectFiles();
+  const dirMap = new Map();
+
+  for (const f of allFiles) {
+    const dir = toUnix(path.dirname(f));
+    const base = path.basename(f);
+    if (!dirMap.has(dir)) dirMap.set(dir, []);
+    dirMap.get(dir).push(base);
+  }
+
+  const dirsSorted = Array.from(dirMap.keys()).sort((a, b) => a.localeCompare(b));
+
+  const lines = [];
+  lines.push("# КОМПАКТНАЯ СТРУКТУРА ПРОЕКТА (директория: файлы через запятую)");
+
+  for (const d of dirsSorted) {
+    const files = (dirMap.get(d) || []).sort((a, b) => a.localeCompare(b));
+    const label = d === "." ? "/" : d + "/";
+    if (files.length) {
+      lines.push(`${label} ${files.join(", ")}`);
+    } else {
+      lines.push(`${label} [пока без файлов]`);
+    }
+  }
+  return lines.join("\n");
+}
+
+// --------------------- FULL: генерация ---------------------
+function generateFullFile() {
+  let content = headerBlock();
+
+  content += `
+#===============================================================================
+# СТРУКТУРА ПРОЕКТА (ДЕРЕВО, укороченное до 4 уровней)
+#===============================================================================
+${generateProjectStructureTree()}
+
+#===============================================================================
+# СОДЕРЖИМОЕ ФАЙЛОВ (текстовые — полностью; бинарные/медиа — кратко)
+#===============================================================================
+`;
+
+  const allFiles = getAllProjectFiles();
+
+  for (const filePath of allFiles) {
+    const fullPath = path.join(PROJECT_ROOT, filePath);
+    const lastModified = fs.existsSync(fullPath)
+      ? new Date(fs.statSync(fullPath).mtime).toISOString().split("T")[0]
+      : "неизвестно";
+    const type = getFileContentType(filePath);
+
+    content += `
+//--------------------------------------------------------------------------------
+// ФАЙЛ: ${filePath}
+// ПОСЛЕДНЕЕ ИЗМЕНЕНИЕ: ${lastModified}
+//--------------------------------------------------------------------------------
+${getFileContent(filePath, type)}
+`;
+  }
+
+  return content;
+}
+
+// --------------------- ADAPTIVE: генерация ---------------------
+function generateAdaptiveFile() {
+  const MAX = CONFIG.adaptiveLimits.maxLines;
+  let content = headerBlock();
+
+  content += `
+#===============================================================================
+# СТРУКТУРА ПРОЕКТА (КОМПАКТНАЯ, точные пути; внутри папок — файлы через запятую)
+#===============================================================================
+${generateCompactStructure()}
+
+#===============================================================================
+# КЛЮЧЕВЫЕ ФАЙЛЫ И СОДЕРЖИМОЕ (приоритетно)
+#===============================================================================
+`;
+
+  let current = countLines(content);
+
+  const all = getAllProjectFiles();
+  const critical = all.filter((f) => getFilePriority(f) === "critical");
+  const high = all.filter((f) => getFilePriority(f) === "high");
+  const medium = all.filter((f) => getFilePriority(f) === "medium");
+
+  const limCritical = Math.floor(MAX * (CONFIG.adaptiveLimits.criticalPercentage / 100));
+  const limHigh = Math.floor(MAX * ((CONFIG.adaptiveLimits.criticalPercentage + CONFIG.adaptiveLimits.highPercentage) / 100));
+
+  function tryAddBlock(title, filePath, mode = "full") {
+    const fullPath = path.join(PROJECT_ROOT, filePath);
+    const lastModified = fs.existsSync(fullPath)
+      ? new Date(fs.statSync(fullPath).mtime).toISOString().split("T")[0]
+      : "неизвестно";
+    const type = getFileContentType(filePath);
+    const rawContent = getFileContent(filePath, type);
+    const fileContent = mode === "signatures" ? extractSignatures(rawContent) : rawContent;
+
+    const block = `
+//--------------------------------------------------------------------------------
+// ${title}: ${filePath}
+// ПОСЛЕДНЕЕ ИЗМЕНЕНИЕ: ${lastModified}
+//--------------------------------------------------------------------------------
+${fileContent}
+`;
+    const newLines = countLines(block);
+    if (current + newLines > MAX) return false;
+    content += block;
+    current += newLines;
+    return true;
+  }
+
+  for (const f of critical) {
+    if (current >= limCritical) break;
+    if (!tryAddBlock("ФАЙЛ (КРИТИЧЕСКИЙ)", f, "full")) break;
+  }
+
+  for (const f of high) {
+    if (current >= limHigh) break;
+    if (!tryAddBlock("ФАЙЛ (ВЫСОКИЙ ПРИОРИТЕТ)", f, "full")) break;
+  }
+
+  for (const f of medium) {
+    if (current >= MAX) break;
+    if (!tryAddBlock("ФАЙЛ (СРЕДНИЙ ПРИОРИТЕТ — СИГНАТУРЫ)", f, "signatures")) break;
+  }
+
+  if (countLines(content) > MAX) {
+    const lines = content.split("\n").slice(0, MAX);
+    lines.push("");
+    lines.push("#===============================================================================");
+    lines.push(`# ⚠️ ФАЙЛ УСЕЧЕН ДО ${MAX} СТРОК`);
+    lines.push("# Полная версия: .meta/project-full.txt");
+    lines.push("#===============================================================================");
+    content = lines.join("\n");
+  }
+
+  return content;
+}
+
+// --------------------- MAIN ---------------------
+function main() {
+  console.log(`🔧 Корень проекта: ${PROJECT_ROOT}`);
+  console.log(`📂 Папка вывода: ${META_DIR}`);
+  console.log(`🧭 Режим: ${MODE}`);
+  if (MODE === "full" || MODE === "both") {
+    console.log("🔍 Генерация FULL...");
+    const fullContent = generateFullFile();
+    fs.writeFileSync(FULL_FILE, fullContent, "utf8");
+    console.log(`✅ ${FULL_FILE} — ${countLines(fullContent)} строк`);
+  }
+  if (MODE === "adaptive" || MODE === "both") {
+    console.log("🔍 Генерация ADAPTIVE...");
+    const adaptiveContent = generateAdaptiveFile();
+    fs.writeFileSync(ADAPTIVE_FILE, adaptiveContent, "utf8");
+    console.log(`✅ ${ADAPTIVE_FILE} — ${countLines(adaptiveContent)} строк (лимит: ${ADAPTIVE_MAX_LINES})`);
+  }
+  console.log("🎉 Готово!");
+}
+
+try {
+  main();
+} catch (err) {
+  console.error("❌ Ошибка при генерации контекста:", err);
+  process.exit(1);
+}
