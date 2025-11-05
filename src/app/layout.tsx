@@ -22,11 +22,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <header>
           <div className="container" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Link href={withBase("/") as string}><b>Музыкальные связи</b></Link>
+              <a href={withBase("/")}><b>Музыкальные связи</b></a>
               <nav className="tabs">
-                <Link className="tab" href={withBase("/timeline/") as string}>Таймлайн</Link>
-                <Link className="tab" href={withBase("/graph/") as string}>Граф</Link>
-                <Link className="tab" href={withBase("/map/") as string}>Карта</Link>
+                <a className="tab" href={withBase("/timeline/")}>Таймлайн</a>
+                <a className="tab" href={withBase("/graph/")}>Граф</a>
+                <a className="tab" href={withBase("/map/")}>Карта</a>
               </nav>
             </div>
             <Controls />
