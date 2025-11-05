@@ -33,107 +33,100 @@ jobs:
         with:
           node-version: "18"
 
-      - name: Generate .meta (use repo script if present, otherwise fallback)
-        shell: bash
+      - name: Run repo generator (continue on error)
+        id: repo_gen
+        continue-on-error: true
         run: |
-          set -euo pipefail
           mkdir -p .meta
-
           if [ -f scripts/generate-context.js ]; then
-            echo "Using scripts/generate-context.js"
             node scripts/generate-context.js --mode=both --max-lines=20000
           else
-            echo "Local generator missing. Using fallback."
-            cat > _fallback-generate-context.js <<'JS'
-            const fs=require('fs'); const path=require('path');
-            const ROOT=process.cwd(); const META=path.join(ROOT,'.meta');
-            if(!fs.existsSync(META)) fs.mkdirSync(META,{recursive:true});
+            echo "scripts/generate-context.js not found"
+            exit 2
+          fi
 
-            function toUnix(p){return p.replace(/\\/g,'/');}
-            function isText(f){
-              const t=f.toLowerCase();
-              const ex=['.ts','.tsx','.js','.jsx','.json','.yaml','.yml','.md','.css','.scss','.less','.txt','.html','.webmanifest','.env'];
-              return ex.some(e=>t.endsWith(e));
-            }
-            function listFiles(){
-              const exclude=['node_modules','/.git/','/.next/','/dist/','/build/','/out/','/coverage/','/.meta/','/.vscode/','/.idea/'];
+      - name: Fallback generator (actions/github-script)
+        if: steps.repo_gen.outcome != 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const ROOT = process.env.GITHUB_WORKSPACE || process.cwd();
+            const META = path.join(ROOT, '.meta');
+            if (!fs.existsSync(META)) fs.mkdirSync(META, { recursive: true });
+
+            const excludeHints = ['node_modules','/.git/','/.next/','/dist/','/build/','/out/','/coverage/','/.meta/','.vscode','.idea'];
+            const textExts = ['.ts','.tsx','.js','.jsx','.json','.yaml','.yml','.md','.css','.scss','.less','.txt','.html','.webmanifest','.env','.env.example'];
+            const toUnix = p => p.replace(/\\/g, '/');
+            const isText = f => textExts.some(e => f.toLowerCase().endsWith(e));
+            const listFiles = () => {
               const res=[]; const stack=[ROOT];
-              while(stack.length){
-                const d=stack.pop(); let ents=[];
-                try{ents=fs.readdirSync(d,{withFileTypes:true});}catch{continue;}
-                for(const it of ents){
-                  const full=path.join(d,it.name);
-                  const rel=toUnix(path.relative(ROOT, full))||'.';
-                  if(exclude.some(x=>rel.includes(toUnix(x)))) continue;
-                  try{
-                    if(it.isDirectory()) stack.push(full);
-                    else if(it.isFile()) res.push(rel);
-                  }catch{}
+              while (stack.length) {
+                const d = stack.pop();
+                let ents=[]; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { continue; }
+                for (const it of ents) {
+                  const full = path.join(d, it.name);
+                  const rel = toUnix(path.relative(ROOT, full)) || '.';
+                  if (excludeHints.some(x => rel.includes(toUnix(x)))) continue;
+                  try {
+                    if (it.isDirectory()) stack.push(full);
+                    else if (it.isFile()) res.push(rel);
+                  } catch {}
                 }
               }
               return res.sort();
-            }
-            function tree(dir,prefix,depth,buf){
-              if(depth>3){ buf.push(prefix+"└── ..."); return; }
-              let items=[]; try{items=fs.readdirSync(dir);}catch{return;}
-              items.sort().forEach((name,i)=>{
-                const fullp=path.join(dir,name);
-                const rel=toUnix(path.relative(ROOT, fullp))||'.';
-                if (['node_modules','.git','.next','dist','build','out','.meta','coverage','.vscode','.idea'].includes(name)) return;
-                const last=i===items.length-1; const pre=prefix+(last?"└── ":"├── ");
-                try{
-                  const st=fs.statSync(fullp);
-                  if(st.isDirectory()){ buf.push(pre+name+"/"); tree(fullp, prefix+(last?"    ":"│   "), depth+1, buf); }
-                  else { buf.push(pre+name); }
-                }catch{}
-              });
-            }
+            };
 
-            const files=listFiles();
+            // FULL
+            const files = listFiles();
+            let full = `Context fallback file
+            Generated: ${new Date().toISOString()}
 
-            // Full
-            const fullBuf=[];
-            fullBuf.push("Context fallback file");
-            fullBuf.push("Generated: "+new Date().toISOString());
-            fullBuf.push("");
-            fullBuf.push("# TREE (limited)");
-            const tb=[]; tree(ROOT,"",0,tb); fullBuf.push(tb.join("\n"));
-            fullBuf.push(""); fullBuf.push("# FILES");
-            for(const f of files){
-              const p=path.join(ROOT,f); let body='';
-              if(isText(f)){ try{ body=fs.readFileSync(p,'utf8'); }catch(e){ body='// read error: '+e.message; } }
-              else { try{ const st=fs.statSync(p); body='// binary or non-text file ('+Math.round(st.size/1024)+' KB)'; }catch{ body='// unknown file'; } }
-              fullBuf.push("\n// ---- FILE: "+f+" ----\n"+body);
+            # TREE (approx)
+            `;
+            // simple tree
+            const dirs = new Set(files.map(f => toUnix(path.dirname(f))));
+            const treeLines = Array.from(dirs).sort().map(d => (d === '.' ? '/' : d + '/'));
+            full += treeLines.join('\n') + '\n\n# FILES\n';
+            for (const f of files) {
+              const p = path.join(ROOT, f);
+              let body = '';
+              if (isText(f)) {
+                try { body = fs.readFileSync(p, 'utf8'); } catch (e) { body = `// read error: ${e.message}`; }
+              } else {
+                try { const st = fs.statSync(p); body = `// binary or non-text file (${Math.round(st.size/1024)} KB)`; }
+                catch { body = '// unknown file'; }
+              }
+              full += `\n// ---- FILE: ${f} ----\n` + body + '\n';
             }
-            fs.writeFileSync(path.join(META,'project-full.txt'), fullBuf.join("\n"), 'utf8');
+            fs.writeFileSync(path.join(META, 'project-full.txt'), full, 'utf8');
 
-            // Adaptive (compact)
-            const dirMap=new Map();
-            for(const f of files){
-              const d=toUnix(path.dirname(f)); const b=path.basename(f);
-              if(!dirMap.has(d)) dirMap.set(d,[]); dirMap.get(d).push(b);
+            // ADAPTIVE
+            let adaptive = '# COMPACT STRUCTURE\n';
+            const dirMap = new Map();
+            for (const f of files) {
+              const d = toUnix(path.dirname(f));
+              const b = path.basename(f);
+              if (!dirMap.has(d)) dirMap.set(d, []);
+              dirMap.get(d).push(b);
             }
-            const lines=["# COMPACT STRUCTURE"];
-            for(const d of Array.from(dirMap.keys()).sort()){
-              const label=(d==='.'?'/':d+'/'); lines.push(label+" "+dirMap.get(d).sort().join(', '));
+            for (const d of Array.from(dirMap.keys()).sort()) {
+              adaptive += (d === '.' ? '/' : d + '/') + ' ' + dirMap.get(d).sort().join(', ') + '\n';
             }
-            fs.writeFileSync(path.join(META,'project-adaptive.txt'), lines.join("\n"), 'utf8');
-            console.log("Fallback generation done.");
-            JS
-            node _fallback-generate-context.js
-          fi
+            fs.writeFileSync(path.join(META, 'project-adaptive.txt'), adaptive, 'utf8');
+
+            core.info('Fallback generation done.');
 
       - name: Commit .meta on push to main
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        shell: bash
         run: |
-          set -e
           if [ -n "$(git status --porcelain .meta)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add .meta
             git commit -m "chore(meta): update project context"
-            git push || echo "Push failed (maybe branch protected) — skipping"
+            git push || echo "Push failed (branch may be protected)"
           else
             echo "No changes in .meta"
           fi
