@@ -1,12 +1,24 @@
-export function basePath() {
-  // На CI и в собранном экспорте Next сам подставит basePath/assetPrefix,
-  // но для fetch удобно явно строить относительный путь.
-  const bp = (typeof window !== "undefined" && (window as any).__BASE_PATH__) || "";
-  return bp;
+export function basePath(): string {
+  if (typeof window !== 'undefined') {
+    // В браузере берём из <base> или глобальной переменной
+    const base = document.querySelector('base')?.getAttribute('href') || '';
+    return base.replace(/\/$/, '');
+  }
+  // На сервере возвращаем пустую строку (Next сам обработает basePath)
+  return '';
 }
 
-export function withBase(path: string) {
+export function withBase(path: string): string {
+  // Только для клиентского использования (fetch, динамические URL)
+  if (typeof window === 'undefined') {
+    return path; // На сервере не модифицируем
+  }
+  
   const bp = basePath();
   if (!bp) return path;
-  return path.startsWith("/") ? `${bp}${path}` : `${bp}/${path}`;
+  
+  // Убираем дублирование basePath
+  if (path.startsWith(bp)) return path;
+  
+  return path.startsWith('/') ? `${bp}${path}` : `${bp}/${path}`;
 }
