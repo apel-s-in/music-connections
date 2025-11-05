@@ -4,11 +4,13 @@ import { withBase } from "@/lib/basePath";
 import { ReactNode } from "react";
 import Controls from "./Controls"; // импортируем клиентский компонент
 
-export const metadata = {
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
   title: "Музыкальные связи",
   description: "Таймлайн, граф, карта — интерактивный атлас музыкальной истории",
-  manifest: withBase("/manifest.webmanifest")
-} as any;
+  manifest: "/manifest.webmanifest"
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
