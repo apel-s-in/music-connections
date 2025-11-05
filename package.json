@@ -2,14 +2,35 @@
   "name": "music-connections",
   "version": "0.1.0",
   "private": true,
-  "description": "Музыкальные связи — PWA (Next.js). Данные YAML/JSON. Таймлайн, граф, карта. RU/EN/ORIG.",
+  "description": "Музыкальные связи — PWA (Next.js static export). Таймлайн, граф, карта. RU/EN/ORIG.",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build && next export",
+    "start": "serve out -p 3000",
     "generate:context": "node scripts/generate-context.js --mode=both --max-lines=20000",
-    "generate:context:full": "node scripts/generate-context.js --mode=full",
-    "generate:context:adaptive": "node scripts/generate-context.js --mode=adaptive --max-lines=20000"
+    "build:data": "node scripts/build-connections.ts"
+  },
+  "dependencies": {
+    "@xyflow/react": "11.8.5",
+    "clsx": "2.1.1",
+    "d3": "7.9.0",
+    "fuse.js": "7.0.0",
+    "idb": "8.0.0",
+    "js-yaml": "4.1.0",
+    "next": "14.2.12",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "20.11.30",
+    "@types/react": "18.2.66",
+    "@types/react-dom": "18.2.22",
+    "typescript": "5.6.2",
+    "serve": "14.2.4"
   },
   "engines": {
-    "node": ">=16.14"
+    "node": ">=18"
   },
   "license": "MIT"
 }
