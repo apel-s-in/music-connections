@@ -1,7 +1,13 @@
+"use client";
+import { useEffect, useState } from "react";
+
 export default function Home() {
-  const basePath = typeof window !== 'undefined' 
-    ? (document.querySelector('base')?.getAttribute('href') || '/').replace(/\/$/, '')
-    : '';
+  const [basePath, setBasePath] = useState('');
+
+  useEffect(() => {
+    const bp = (document.querySelector('base')?.getAttribute('href') || '/').replace(/\/$/, '');
+    setBasePath(bp);
+  }, []);
 
   return (
     <div className="panel">
