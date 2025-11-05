@@ -1,0 +1,7 @@
+kind: Person
+id: heifetz
+names: { ru: "Яша Хейфец", en: "Jascha Heifetz", orig: "Jascha Heifetz" }
+statements:
+  - { pid: P1, value: { iso: "1901-02-02" } }
+  - { pid: P2, value: { iso: "1987-12-10" } }
+  - { pid: P100, value: W0001, qualifiers: { PQ1: { iso: "1917-10-27" }, PQ2: L0101 } }
