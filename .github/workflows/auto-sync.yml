@@ -2,14 +2,14 @@ name: Auto Sync .meta to meta branch
 
 on:
   schedule:
-    - cron: "0 */6 * * *"   # каждые 6 часов
+    - cron: "0 */6 * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: write
 
 concurrency:
-  group: meta-sync
+  group: "meta-sync"
   cancel-in-progress: true
 
 jobs:
@@ -27,19 +27,17 @@ jobs:
         with:
           node-version: "18"
 
-      - name: Generate .meta (with fallback)
+      - name: Build .meta (use repo script if present, else fallback)
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p .meta
-          FALLBACK=0
           if [ -f scripts/generate-context.js ]; then
-            node scripts/generate-context.js --mode=both --max-lines=20000 || FALLBACK=1
+            node scripts/generate-context.js --mode=both --max-lines=20000
           else
-            FALLBACK=1
-          fi
-          if [ "${FALLBACK}" = "1" ]; then
-            node - <<'NODE'
-            const fs=require('fs'); const path=require('path'); const ROOT=process.cwd(); const META=path.join(ROOT,'.meta');
+            cat > _fallback-generate-context.js <<'JS'
+            const fs=require('fs'); const path=require('path');
+            const ROOT=process.cwd(); const META=path.join(ROOT,'.meta');
             if(!fs.existsSync(META)) fs.mkdirSync(META,{recursive:true});
             function toUnix(p){return p.replace(/\\/g,'/');}
             function isText(f){const t=f.toLowerCase(); return ['.ts','.tsx','.js','.jsx','.json','.yaml','.yml','.md','.css','.scss','.less','.txt','.html','.webmanifest','.env'].some(e=>t.endsWith(e));}
@@ -48,19 +46,21 @@ jobs:
                 for(const it of es){const f=path.join(d,it.name); const r=toUnix(path.relative(ROOT,f))||'.'; if(ex.some(x=>r.includes(toUnix(x)))) continue; try{ if(it.isDirectory()) st.push(f); else if(it.isFile()) res.push(r);}catch{}}
               } return res.sort();}
             const files=listFiles();
-            let full=`Context fallback\nGenerated: ${new Date().toISOString()}\n`;
+            let full="Context fallback\\nGenerated: "+new Date().toISOString()+"\\n";
             for(const f of files){const p=path.join(ROOT,f); let body=''; if(isText(f)){try{body=fs.readFileSync(p,'utf8');}catch(e){body='// read error: '+e.message}} else { body='// non-text';}
-              full+=`// FILE: ${f}\n`+body+"\n";}
+              full+="\\n// FILE: "+f+"\\n"+body+"\\n";}
             fs.writeFileSync(path.join(META,'project-full.txt'), full, 'utf8');
-            let adaptive = "# COMPACT STRUCTURE\n";
-            const dirMap = new Map();
-            for (const f of files){const d=toUnix(path.dirname(f)); const b=path.basename(f); if(!dirMap.has(d)) dirMap.set(d,[]); dirMap.get(d).push(b);}
-            for (const d of Array.from(dirMap.keys()).sort()){adaptive += (d==='.'?'/':d+'/')+' '+dirMap.get(d).sort().join(', ')+"\n";}
+            let adaptive="# COMPACT STRUCTURE\\n";
+            const dirMap=new Map();
+            for(const f of files){const d=toUnix(path.dirname(f)); const b=path.basename(f); if(!dirMap.has(d)) dirMap.set(d,[]); dirMap.get(d).push(b);}
+            for(const d of Array.from(dirMap.keys()).sort()){adaptive+=(d==='.'?'/':d+'/')+' '+dirMap.get(d).sort().join(', ')+"\\n";}
             fs.writeFileSync(path.join(META,'project-adaptive.txt'), adaptive, 'utf8');
-            NODE
+            JS
+            node _fallback-generate-context.js
           fi
 
       - name: Publish to meta branch
+        shell: bash
         run: |
           set -e
           BRANCH=meta
@@ -78,7 +78,7 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add -A
             git commit -m "chore(meta): refresh context"
-            git push origin $BRANCH
+            git push origin $BRANCH || echo "Push failed — check branch protections"
           else
             echo "No changes for meta branch"
           fi
