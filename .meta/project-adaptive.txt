@@ -1,5 +1,248 @@
-# COMPACT STRUCTURE
+Пожалуйста, используй ниже правила и анализируй проект целиком.
+Музыкальные Связи — PWA на Next.js (App Router). YAML/JSON данные. Таймлайн, Граф (@xyflow/react), Карта (d3-geo). Fuse-поиск, RU/EN/ORIG, офлайн (IndexedDB).
+
+ПРАВИЛА ДЛЯ НЕЙРОСЕТЕЙ:
+- Язык ответов: по умолчанию RU. Английский — если явно попросят или в именах/терминах.
+- Всегда указывай точные пути файлов при ссылках (например, src/app/(main)/timeline/page.tsx).
+- Любой код выводи ТОЛЬКО в тройных бэктиках с указанием языка, например:
+  ```ts
+  export function x() {}
+  ```
+- Не используй тяжелое форматирование. Разрешены: списки, короткие таблицы. Избегай сложной разметки.
+- Если требуются изменения в файле — показывай минимальный патч (unified diff) или целиком обновлённый файл, но не смешивай.
+- Не выдумывай зависимости и API. Если данных нет — явно скажи «нет данных/нужно уточнение».
+- Перед предложением архитектурных решений проверяй совместимость библиотек (Next 14 App Router, @xyflow/react, d3, next-intl 3.x).
+- Для команд терминала используй блоки ```bash, без интерактивных шагов. Секреты и токены не логируй; предлагай использовать переменные окружения.
+- При ответах по i18n всегда учитывай RU/EN/ORIG и фоллбеки (ru -> en -> orig).
+- При работе с датами придерживайся ISO 8601; поддерживай точность (год/месяц/день) и признак circa/календарь, как в типах.
+- Для PDF: на MVP только print CSS. Полноценный PDF с CJK/RTL — позже (pdfmake/@react-pdf или серверный Puppeteer).
+- В примерах кода придерживайся TypeScript strict, ESM/Next-стиля импорта и двух пробелов отступа.
+- Если предлагаешь CI/Actions — учитывай, что сборка контекста должна работать автономно даже при сломанном приложении.
+- НИКОГДА не генерируйте весь файл целиком - только конкретные блоки для замены. Указывай часть кода до вставки и полностью новый код после вставки. 
+- ФОРМАТ для изменений: -> ФАЙЛ ДЛЯ ИЗМЕНЕНИЯ: путь/к/файлу.tsx НАЙТИ ЭТОТ БЛОК КОДА: [дословно скопировать] -> ЗАМЕНИТЬ НА ЭТОТ БЛОК: [полный новый блок с правильными отступами]
+- СОХРАНЯЙТЕ: комментарии, форматирование, структуру импортов.
+- Если удаляем часть кода, то точно указываем перед какой строкой начинается (настоящая из моего кода) и какая строка будет следующая после удаления (настоящая из моего кода).
+- Всегда пиши максимально подробные пояснения, что и почему делаем.
+
+Сгенерировано: 2025-11-05 18:35:57 UTC
+Версия проекта: 0.1.0
+
+#===============================================================================
+# СТРУКТУРА ПРОЕКТА (КОМПАКТНАЯ)
+#===============================================================================
+# КОМПАКТНАЯ СТРУКТУРА ПРОЕКТА (директория: файлы через запятую)
 / .mccontextignore, package.json
+.git/ FETCH_HEAD, HEAD, config, config.worktree, description, index
+.git/hooks/ applypatch-msg.sample, commit-msg.sample, fsmonitor-watchman.sample, post-update.sample, pre-applypatch.sample, pre-commit.sample, pre-merge-commit.sample, pre-push.sample, pre-rebase.sample, pre-receive.sample, prepare-commit-msg.sample, push-to-checkout.sample, sendemail-validate.sample, update.sample
+.git/info/ exclude
+.git/logs/ HEAD
+.git/logs/refs/heads/ main
+.git/logs/refs/remotes/origin/ main
+.git/objects/pack/ pack-02bb4c43700fbdfc780201afc2ba6c7f8024b4a5.idx, pack-02bb4c43700fbdfc780201afc2ba6c7f8024b4a5.pack, pack-02bb4c43700fbdfc780201afc2ba6c7f8024b4a5.rev
+.git/refs/heads/ main
+.git/refs/remotes/origin/ main
 .github/scripts/ fallback-generate-context.js
 .github/workflows/ auto-sync.yml, generate-context.yml
-scripts/ generate-context.js.
+.meta/ project-adaptive.txt, project-full.txt
+scripts/ generate-context.js
+
+#===============================================================================
+# КЛЮЧЕВЫЕ ФАЙЛЫ
+#===============================================================================
+
+//--------------------------------------------------------------------------------
+// ФАЙЛ (КРИТИЧЕСКИЙ): .github/workflows/auto-sync.yml
+// ПОСЛЕДНЕЕ ИЗМЕНЕНИЕ: 2025-11-05
+//--------------------------------------------------------------------------------
+name: Auto Sync .meta to meta branch
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "meta-sync"
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Run repo generator (continue on error)
+        id: repo_gen
+        continue-on-error: true
+        run: |
+          mkdir -p .meta
+          if [ -f scripts/generate-context.js ]; then
+            node scripts/generate-context.js --mode=both --max-lines=20000
+          else
+            echo "scripts/generate-context.js not found"
+            exit 2
+          fi
+
+      - name: Run fallback generator (node file)
+        if: steps.repo_gen.outcome != 'success'
+        run: |
+          node .github/scripts/fallback-generate-context.js
+
+      - name: Publish .meta to 'meta' branch
+        run: |
+          set -e
+          BRANCH=meta
+          git fetch origin $BRANCH || true
+          if git show-ref --quiet refs/heads/$BRANCH; then
+            echo "Branch $BRANCH exists"
+          else
+            git branch $BRANCH || true
+          fi
+          git worktree add _meta_worktree $BRANCH || true
+          rsync -a --delete .meta/ _meta_worktree/
+          cd _meta_worktree
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "chore(meta): refresh context"
+            git push origin $BRANCH || echo "Push failed — check branch protections"
+          else
+            echo "No changes for meta branch"
+          fi
+
+
+//--------------------------------------------------------------------------------
+// ФАЙЛ (КРИТИЧЕСКИЙ): .github/workflows/generate-context.yml
+// ПОСЛЕДНЕЕ ИЗМЕНЕНИЕ: 2025-11-05
+//--------------------------------------------------------------------------------
+name: Generate Context (.meta)
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - ".meta/**"
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - ".meta/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "generate-context-${{ github.ref_name }}"
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Run repo generator (continue on error)
+        id: repo_gen
+        continue-on-error: true
+        run: |
+          mkdir -p .meta
+          if [ -f scripts/generate-context.js ]; then
+            node scripts/generate-context.js --mode=both --max-lines=20000
+          else
+            echo "scripts/generate-context.js not found"
+            exit 2
+          fi
+
+      - name: Run fallback generator (node file)
+        if: steps.repo_gen.outcome != 'success'
+        run: |
+          node .github/scripts/fallback-generate-context.js
+
+      - name: Commit .meta on push to main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if [ -n "$(git status --porcelain .meta)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .meta
+            git commit -m "chore(meta): update project context"
+            git push || echo "Push failed (branch may be protected)"
+          else
+            echo "No changes in .meta"
+          fi
+
+      - name: Upload .meta as artifact on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: meta-files
+          path: .meta/
+
+
+//--------------------------------------------------------------------------------
+// ФАЙЛ (КРИТИЧЕСКИЙ): package.json
+// ПОСЛЕДНЕЕ ИЗМЕНЕНИЕ: 2025-11-05
+//--------------------------------------------------------------------------------
+{
+  "name": "music-connections",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Музыкальные связи — PWA (Next.js). Данные YAML/JSON. Таймлайн, граф, карта. RU/EN/ORIG.",
+  "scripts": {
+    "generate:context": "node scripts/generate-context.js --mode=both --max-lines=20000",
+    "generate:context:full": "node scripts/generate-context.js --mode=full",
+    "generate:context:adaptive": "node scripts/generate-context.js --mode=adaptive --max-lines=20000"
+  },
+  "engines": {
+    "node": ">=16.14"
+  },
+  "license": "MIT"
+}
+
+
+//--------------------------------------------------------------------------------
+// ФАЙЛ (СРЕДНИЙ ПРИОРИТЕТ — СИГНАТУРЫ): scripts/generate-context.js
+// ПОСЛЕДНЕЕ ИЗМЕНЕНИЕ: 2025-11-05
+//--------------------------------------------------------------------------------
+// Сигнатуры/объявления:
+const MODE = (argv.mode || "both").toLowerCase(); // full | adaptive | both
+function loadUserIgnore() {
+function toUnix(p){ return p.replace(/\\/g,"/"); }
+function globToRegExp(pattern){
+function isExcluded(filePath){ const unix=toUnix(filePath); return EXCLUDE_PATTERNS.some((re)=>re.test(unix)); }
+function getFileContentType(filePath){
+function getAllProjectFiles(){
+function getFileContent(filePath, type="full"){
+function countLines(s){ return (s.match(/\n/g)||[]).length + (s.length?1:0); }
+function extractSignatures(content){
+function getFilePriority(filePath){
+function headerBlock(){
+function generateProjectStructureTree(){
+  function walk(dir,prefix="",depth=0){
+function generateCompactStructure(){
+function generateFullFile(){
+function generateAdaptiveFile(){
+  function tryAddBlock(title, filePath, mode="full"){
+function main(){
