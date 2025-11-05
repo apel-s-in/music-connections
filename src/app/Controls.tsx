@@ -5,9 +5,10 @@ export default function Controls() {
   useEffect(() => {
     // Контрастность
     const saved = localStorage.getItem("contrast");
-    if (saved === "high") {
-      document.documentElement.setAttribute("data-contrast", "high");
-    }
+    if (saved === "high") document.documentElement.setAttribute("data-contrast", "high");
+
+    // Устанавливаем глобальный базовый путь для fetch
+    (window as any).__BASE_PATH__ = (document.querySelector('base')?.getAttribute('href') || "").replace(/\/$/, "");
 
     // Регистрация Service Worker
     if ("serviceWorker" in navigator) {
@@ -15,9 +16,6 @@ export default function Controls() {
       const swPath = base.endsWith('/') ? `${base}sw.js` : `${base}/sw.js`;
       navigator.serviceWorker.register(swPath).catch(() => {});
     }
-
-    // Глобальная переменная для basePath (для fetch)
-    (window as any).__BASE_PATH__ = (document.querySelector('base')?.getAttribute('href') || '').replace(/\/$/, '');
   }, []);
 
   return (
