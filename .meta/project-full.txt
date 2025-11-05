@@ -32,7 +32,7 @@ MVP (Этап 1): без админки/ИИ/PDF; RU полностью; име�
 - Если удаляем блок — укажи строку перед и строку после (из реального кода).
 - Всегда пиши краткое обоснование, что и почему делаем.
 
-Сгенерировано: 2025-11-05 22:11:36 UTC
+Сгенерировано: 2025-11-05 22:12:23 UTC
 Версия проекта: 0.1.0
 
 // FILE: /.github/scripts/fallback-generate-context.js
@@ -3219,11 +3219,13 @@ import { withBase } from "@/lib/basePath";
 import { ReactNode } from "react";
 import Controls from "./Controls"; // импортируем клиентский компонент
 
-export const metadata = {
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
   title: "Музыкальные связи",
   description: "Таймлайн, граф, карта — интерактивный атлас музыкальной истории",
-  manifest: withBase("/manifest.webmanifest")
-} as any;
+  manifest: "/manifest.webmanifest"
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
