@@ -1,0 +1,15 @@
+{
+  "name": "music-connections",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Музыкальные связи — PWA (Next.js). Данные в YAML, таймлайн, граф, карта. RU/EN, офлайн.",
+  "scripts": {
+    "generate:context": "node scripts/generate-context.js --mode=both --max-lines=20000",
+    "generate:context:full": "node scripts/generate-context.js --mode=full",
+    "generate:context:adaptive": "node scripts/generate-context.js --mode=adaptive --max-lines=20000"
+  },
+  "engines": {
+    "node": ">=16.14"
+  },
+  "license": "MIT"
+}
