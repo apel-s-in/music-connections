@@ -32,7 +32,7 @@ MVP (Этап 1): без админки/ИИ/PDF; RU полностью; име�
 - Если удаляем блок — укажи строку перед и строку после (из реального кода).
 - Всегда пиши краткое обоснование, что и почему делаем.
 
-Сгенерировано: 2025-11-05 23:04:50 UTC
+Сгенерировано: 2025-11-05 23:18:37 UTC
 Версия проекта: 0.1.0
 
 // FILE: /.github/scripts/fallback-generate-context.js
@@ -3335,10 +3335,16 @@ export default function MapPage() {
 
 
 // FILE: /src/app/page.tsx
+"use client";
+import { useEffect, useState } from "react";
+
 export default function Home() {
-  const basePath = typeof window !== 'undefined' 
-    ? (document.querySelector('base')?.getAttribute('href') || '/').replace(/\/$/, '')
-    : '';
+  const [basePath, setBasePath] = useState('');
+
+  useEffect(() => {
+    const bp = (document.querySelector('base')?.getAttribute('href') || '/').replace(/\/$/, '');
+    setBasePath(bp);
+  }, []);
 
   return (
     <div className="panel">
