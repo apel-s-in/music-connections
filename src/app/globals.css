@@ -1,0 +1,29 @@
+:root {
+  --bg: #0b1020;
+  --fg: #e6e7ee;
+  --muted: #aab;
+  --accent: #7c3aed; /* violet-600 */
+  --panel: #12182c;
+}
+
+:root[data-contrast="high"] {
+  --bg: #000;
+  --fg: #fff;
+  --muted: #ddd;
+  --accent: #ffda00;
+  --panel: #111;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji","Segoe UI Emoji"; }
+a { color: var(--fg); text-decoration: none; }
+header, footer { background: var(--panel); }
+button { background: var(--panel); color: var(--fg); border: 1px solid #26304d; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 12px; }
+.tabs { display: flex; gap: 8px; padding: 8px 0; }
+.tab { padding: 8px 12px; border-radius: 8px; background: #171f37; }
+.tab.active { background: var(--accent); color: #17151f; font-weight: 600; }
+.panel { background: #0f1530; border: 1px solid #283259; border-radius: 10px; padding: 12px; }
+svg { display: block; }
+hr { border: none; border-top: 1px solid #2b355f; margin: 16px 0; }
