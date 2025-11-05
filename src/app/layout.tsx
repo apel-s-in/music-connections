@@ -1,8 +1,8 @@
-"use client";
 import "./globals.css";
 import Link from "next/link";
 import { withBase } from "@/lib/basePath";
-import { ReactNode, useEffect } from "react";
+import { ReactNode } from "react";
+import Controls from "./Controls"; // импортируем клиентский компонент
 
 export const metadata = {
   title: "Музыкальные связи",
@@ -10,36 +10,7 @@ export const metadata = {
   manifest: withBase("/manifest.webmanifest")
 } as any;
 
-function useServiceWorker() {
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    (window as any).__BASE_PATH__ = (document.querySelector('base')?.getAttribute('href') || "").replace(/\/$/, "");
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register(withBase("/sw.js")).catch(() => {});
-    }
-  }, []);
-}
-
-function Controls() {
-  useEffect(() => {
-    const saved = localStorage.getItem("contrast");
-    if (saved === "high") document.documentElement.setAttribute("data-contrast", "high");
-  }, []);
-  return (
-    <div style={{ display: "flex", gap: 8 }}>
-      <button onClick={() => {
-        const curr = document.documentElement.getAttribute("data-contrast");
-        const next = curr === "high" ? null : "high";
-        if (next) document.documentElement.setAttribute("data-contrast", next);
-        else document.documentElement.removeAttribute("data-contrast");
-        localStorage.setItem("contrast", next ? "high" : "normal");
-      }}>Контраст</button>
-    </div>
-  );
-}
-
 export default function RootLayout({ children }: { children: ReactNode }) {
-  useServiceWorker();
   return (
     <html lang="ru">
       <head>
