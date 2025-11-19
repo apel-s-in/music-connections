@@ -1,76 +1,75 @@
 "use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import { loadDataset } from "@/lib/data-loader";
+import { isFavorite, setFavorite } from "@/lib/offline";
+
+type Band = { id: string; name: string; start: Date; end: Date };
 
 export default function TimelinePage() {
-  const [ver, setVer] = useState<string>("");
-  const ref = useRef<SVGSVGElement>(null);
-  const [range, setRange] = useState<[Date, Date]>([new Date(1780,0,1), new Date(2000,0,1)]);
+  const [ver, setVer] = useState("");
+  const [bands, setBands] = useState<Band[]>([]);
+  const [favs, setFavs] = useState<Set<string>>(new Set());
+  const ref = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
-    loadDataset().then(ds => setVer(`${ds.version} · ${new Date(ds.generatedAt).toISOString().slice(0,10)}`));
+    loadDataset().then(async (ds) => {
+      setVer(`${ds.version} · ${new Date(ds.generatedAt).toISOString().slice(0, 10)}`);
+      const persons = ds.nodes.filter((n: any) => n.kind === "Person");
+      const bs: Band[] = [];
+      for (const p of persons) {.start.getFullYear());
+      // Избранное
+      const f = new Set<string>();
+      for (const b of bs) if (await isFavorite(b.id)) f.add(b.id);
+      setFavs(f);
+      setBands(bs.slice(0, 20)); // на экране — первые 20 лент
+    });
   }, []);
+
+  const [range, setRange] = useState<[Date, Date]>([new Date(1780, 0, 1), new Date(2000, 0, 1)]);
+  useEffect(() => {
+    if (!bands.length) return;
+    const min = bands.reduce((m, b) => Math.min(m, b.start.getFullYear()), 9999);
+    const max = bands.reduce((m, b) => Math.max(m, b.end.getFullYear()), 0);
+    setRange([new Date(min - 10, 0, 1), new Date(max + 10, 0, 1)]);
+  }, [bands]);
 
   useEffect(() => {
     const svg = d3.select(ref.current!);
-    const w = 1100, h = 220, m = {l:50, r:20, t:20, b:30};
-    svg.attr("viewBox", `0 0 ${w} ${h}`).attr("width", "100%").attr("height", 260);
+    const w = 1100, h = 280, m = { l: 60, r: 20, t: 20, b: 34 };
+    svg.attr("viewBox", `0 0 ${w} ${h}`).attr("width", "100%").attr("height", h);
     svg.selectAll("*").remove();
-
     const x = d3.scaleTime().domain(range).range([m.l, w - m.r]);
-    const axis = d3.axisBottom<Date>(x).ticks(10).tickSizeOuter(0);
+    const axis = d3.axisBottom(x).ticks(10).tickSizeOuter(0);
     svg.append("g").attr("transform", `translate(0,${h - m.b})`).attr("color", "#6b7280").call(axis as any);
 
-    // Пример “лент жизни” — две тестовые полосы
-    const bands = [
-      { name: "Яша Хейфец", color: "#22c55e", start: new Date(1901,1,2), end: new Date(1987,11,10) },
-      { name: "Н. Паганини", color: "#ef4444", start: new Date(1782,1,27), end: new Date(1840,7,27) }
-    ];
-    const y0 = 50, rowH = 24, gap = 12;
+    const y0 = 50, rowH = 22, gap = 10;
     bands.forEach((b, i) => {
-      const y = y0 + i*(rowH+gap);
+      const y = y0 + i * (rowH + gap);
       svg.append("rect")
         .attr("x", x(b.start)).attr("y", y)
-        .attr("width", Math.max(2, x(b.end)-x(b.start))).attr("height", rowH)
-        .attr("rx", 8).attr("fill", b.color).attr("opacity", 0.85);
+        .attr("width", Math.max(2, x(b.end) - x(b.start))).attr("height", rowH)
+        .attr("rx", 8).attr("fill", "#2e3770").attr("opacity", 0.9);
+
       svg.append("text")
-        .attr("x", x(b.start)+6).attr("y", y+rowH/2+5)
-        .attr("font-size", 12).attr("fill", "#0b1020").text(b.name);
-    });
+        .attr("x", x(b.start) + 6).attr("y", y + rowH / 2 + 5)
+        .attr("font-size", 12).attr("fill", "#e6e7ee")
+        .text(`${b.name} (${b.start.getFullYear()}–${b.end.getFullYear()})`);
 
-    // Зум/панорамирование
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.5, 20])
-      .on("zoom", (ev) => {
-        const t = ev.transform;
-        const zx = t.rescaleX(x);
-        svg.selectAll("g").filter(function() { return (this as SVGGElement).getAttribute("data-axis") !== null; });
-        svg.selectAll("g").remove();
-        const axis2 = d3.axisBottom<Date>(zx).ticks(10).tickSizeOuter(0);
-        svg.append("g").attr("transform", `translate(0,${h - m.b})`).attr("color", "#6b7280").attr("data-axis", "1").call(axis2 as any);
-        bands.forEach((b, i) => {
-          const y = y0 + i*(rowH+gap);
-          svg.selectAll(`rect.band-${i}`).remove();
-          svg.append("rect").attr("class", `band-${i}`)
-            .attr("x", zx(b.start)).attr("y", y)
-            .attr("width", Math.max(2, zx(b.end)-zx(b.start))).attr("height", rowH)
-            .attr("rx", 8).attr("fill", b.color).attr("opacity", 0.85);
-          svg.selectAll(`text.band-${i}`).remove();
-          svg.append("text").attr("class", `band-${i}`)
-            .attr("x", zx(b.start)+6).attr("y", y+rowH/2+5)
-            .attr("font-size", 12).attr("fill", "#0b1020").text(b.name);
-        });
-      });
-    svg.call(zoom as any);
-  }, [range]);
-
-  return (
-    <div className="panel">
-      <h2>Таймлайн</h2>
-      <svg ref={ref} role="img" aria-label="Временная шкала" />
-      <hr />
-      <small style={{ color: "var(--muted)" }}>Версия данных: {ver || "—"}</small>
-    </div>
-  );
-}
+      // Кнопка избранного слева от ленты
+      const starX = x(range[0]) + 10;
+      svg.append("text")
+        .attr("x", starX).attr("y", y + rowH / 2 + 5)
+        .attr("font-size", 14).attr("fill", "#ffda00")
+        .attr("cursor", "pointer")
+        .text(favs.has(b.id) ? "★" : "☆")
+        .on("click", async () => {
+          const on = !favs.has(b.id);
+          await setFavorite(b.id, on);
+          const next = new Set(favs);
+          if (on) next.add(b.id); else next.delete(b.id);
+          setFavs(next);
+          // перерисуем только звезду — проще всего полностью перерисовать
+          // (в рамках MVP это ок)
+          const ev = new Event
