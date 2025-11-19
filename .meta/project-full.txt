@@ -32,7 +32,7 @@ MVP (Этап 1): без админки/ИИ/PDF; RU полностью; име�
 - Если удаляем блок — укажи строку перед и строку после (из реального кода).
 - Всегда пиши краткое обоснование, что и почему делаем.
 
-Сгенерировано: 2025-11-19 21:48:09 UTC
+Сгенерировано: 2025-11-19 22:01:25 UTC
 Версия проекта: 0.1.0
 
 // FILE: /.github/scripts/fallback-generate-context.js
@@ -3486,8 +3486,8 @@ import { loadDataset } from "@/lib/data-loader";
 import { isFavorite, setFavorite } from "@/lib/offline";
 
 export default function GraphPage() {
-  const [nodes, setNodes, onNodesChange] = useNodesState<RFNode[]>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge[]>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
   const [favs, setFavs] = useState<Set<string>>(new Set());
   const [focusId, setFocusId] = useState<string | null>(null);
 
