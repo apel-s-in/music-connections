@@ -16,8 +16,8 @@ import { loadDataset } from "@/lib/data-loader";
 import { isFavorite, setFavorite } from "@/lib/offline";
 
 export default function GraphPage() {
-  const [nodes, setNodes, onNodesChange] = useNodesState<RFNode[]>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge[]>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
   const [favs, setFavs] = useState<Set<string>>(new Set());
   const [focusId, setFocusId] = useState<string | null>(null);
 
