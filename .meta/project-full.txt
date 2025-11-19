@@ -32,7 +32,7 @@ MVP (Этап 1): без админки/ИИ/PDF; RU полностью; име�
 - Если удаляем блок — укажи строку перед и строку после (из реального кода).
 - Всегда пиши краткое обоснование, что и почему делаем.
 
-Сгенерировано: 2025-11-19 19:03:11 UTC
+Сгенерировано: 2025-11-19 20:18:14 UTC
 Версия проекта: 0.1.0
 
 // FILE: /.github/scripts/fallback-generate-context.js
@@ -2915,101 +2915,38 @@ module.exports = nextConfig;
 
 // FILE: /public/data/connections.json
 {
-“meta”: {
-“version”: 1,
-“generated”: “2025-11-19”
-},
-“places”: [
-{ “id”: “bordeaux”, “names”: { “ru”: “Бордо”, “en”: “Bordeaux” }, “country”: “FR”, “lat”: 44.84, “lon”: -0.58 },
-{ “id”: “vienna”, “names”: { “ru”: “Вена”, “en”: “Vienna” }, “country”: “AT”, “lat”: 48.2082, “lon”: 16.3738 },
-{ “id”: “hanover”, “names”: { “ru”: “Ганновер”, “en”: “Hanover” }, “country”: “DE”, “lat”: 52.3759, “lon”: 9.732 },
-{ “id”: “st_petersburg”, “names”: { “ru”: “Санкт‑Петербург”, “en”: “St. Petersburg” }, “country”: “RU”, “lat”: 59.9343, “lon”: 30.3351 },
-{ “id”: “odessa”, “names”: { “ru”: “Одесса”, “en”: “Odesa” }, “country”: “UA”, “lat”: 46.4825, “lon”: 30.7233 },
-{ “id”: “moscow”, “names”: { “ru”: “Москва”, “en”: “Moscow” }, “country”: “RU”, “lat”: 55.7558, “lon”: 37.6173 },
-{ “id”: “bucharest”, “names”: { “ru”: “Бухарест”, “en”: “Bucharest” }, “country”: “RO”, “lat”: 44.4268, “lon”: 26.1025 },
-{ “id”: “new_york”, “names”: { “ru”: “Нью‑Йорк”, “en”: “New York” }, “country”: “US”, “lat”: 40.7128, “lon”: -74.006 }
-],
-“persons”: [
-{
-“id”: “rode”,
-“kind”: “Person”,
-“names”: { “ru”: “Пьер Роде”, “en”: “Pierre Rode”, “orig”: “Pierre Rode” },
-“born”: 1774, “died”: 1830, “birth_place”: “bordeaux”,
-“aliases”: [“Rode”], “roles”: [“violinist”, “composer”]
-},
-{
-“id”: “boehm”,
-“kind”: “Person”,
-“names”: { “ru”: “Иозеф Бём”, “en”: “Joseph Böhm”, “orig”: “Joseph Böhm” },
-“born”: 1795, “died”: 1876, “birth_place”: “vienna”,
-“aliases”: [“Boehm”, “Böhm”], “roles”: [“violinist”, “teacher”]
-},
-{
-“id”: “joachim”,
-“kind”: “Person”,
-“names”: { “ru”: “Иозеф Иоахим”, “en”: “Joseph Joachim”, “orig”: “Joseph Joachim” },
-“born”: 1831, “died”: 1907, “birth_place”: “vienna”,
-“aliases”: [“Joachim”], “roles”: [“violinist”, “teacher”]
-},
-{
-“id”: “auer”,
-“kind”: “Person”,
-“names”: { “ru”: “Леопольд Ауэр”, “en”: “Leopold Auer”, “orig”: “Leopold Auer” },
-“born”: 1845, “died”: 1930, “birth_place”: “hungary”,
-“aliases”: [“Auer”], “roles”: [“violinist”, “teacher”], “main_place”: “st_petersburg”
-},
-{
-“id”: “heifetz”,
-“kind”: “Person”,
-“names”: { “ru”: “Яша Хейфец”, “en”: “Jascha Heifetz”, “orig”: “Jascha Heifetz” },
-“born”: 1901, “died”: 1987, “birth_place”: “vilnius”,
-“aliases”: [“Heifetz”], “roles”: [“violinist”], “main_place”: “st_petersburg”
-},
-{
-“id”: “milstein”,
-“kind”: “Person”,
-“names”: { “ru”: “Натан Мильштейн”, “en”: “Nathan Milstein”, “orig”: “Nathan Milstein” },
-“born”: 1904, “died”: 1992, “birth_place”: “odessa”,
-“aliases”: [“Milstein”], “roles”: [“violinist”], “main_place”: “odessa”
-},
-{
-“id”: “oistrakh”,
-“kind”: “Person”,
-“names”: { “ru”: “Давид Ойстрах”, “en”: “David Oistrakh”, “orig”: “David Oistrakh” },
-“born”: 1908, “died”: 1974, “birth_place”: “odessa”,
-“aliases”: [“Oistrakh”], “roles”: [“violinist”], “main_place”: “moscow”
-},
-{
-“id”: “stolyarsky”,
-“kind”: “Person”,
-“names”: { “ru”: “Пётр Столярский”, “en”: “Pyotr Stolyarsky”, “orig”: “Pyotr Stolyarsky” },
-“born”: 1871, “died”: 1944, “birth_place”: “odessa”,
-“aliases”: [“Stolyarsky”], “roles”: [“teacher”, “violinist”], “main_place”: “odessa”
-},
-{
-“id”: “menuhin”,
-“kind”: “Person”,
-“names”: { “ru”: “Еху́ди Менухин”, “en”: “Yehudi Menuhin”, “orig”: “Yehudi Menuhin” },
-“born”: 1916, “died”: 1999, “birth_place”: “new_york”,
-“aliases”: [“Menuhin”], “roles”: [“violinist”], “main_place”: “london”
-},
-{
-“id”: “enescu”,
-“kind”: “Person”,
-“names”: { “ru”: “Джордже Энеску”, “en”: “George Enescu”, “orig”: “George Enescu” },
-“born”: 1881, “died”: 1955, “birth_place”: “bucharest”,
-“aliases”: [“Enescu”, “Enesco”], “roles”: [“violinist”, “composer”, “teacher”]
-}
-],
-“edges”: [
-{ “id”: “e1”, “type”: “teacher_student”, “source”: “rode”, “target”: “boehm”, “years”: [1810, 1815] },
-{ “id”: “e2”, “type”: “teacher_student”, “source”: “boehm”, “target”: “joachim”, “years”: [1840, 1848] },
-{ “id”: “e3”, “type”: “teacher_student”, “source”: “joachim”, “target”: “auer”, “years”: [1864, 1867] },
-{ “id”: “e4”, “type”: “teacher_student”, “source”: “auer”, “target”: “heifetz”, “years”: [1910, 1917] },
-{ “id”: “e5”, “type”: “teacher_student”, “source”: “auer”, “target”: “milstein”, “years”: [1912, 1917] },
-{ “id”: “e6”, “type”: “teacher_student”, “source”: “stolyarsky”, “target”: “oistrakh”, “years”: [1923, 1930] },
-{ “id”: “e7”, “type”: “teacher_student”, “source”: “enescu”, “target”: “menuhin”, “years”: [1927, 1935] }
-]
+  "version": "demo-1.0",
+  "generatedAt": "2025-11-19T00:00:00Z",
+  "nodes": [
+    { "kind": "Place", "id": "bordeaux", "names": { "ru": "Бордо", "en": "Bordeaux" }, "lat": 44.84, "lon": -0.58 },
+    { "kind": "Place", "id": "vienna", "names": { "ru": "Вена", "en": "Vienna" }, "lat": 48.2082, "lon": 16.3738 },
+    { "kind": "Place", "id": "hanover", "names": { "ru": "Ганновер", "en": "Hanover" }, "lat": 52.3759, "lon": 9.732 },
+    { "kind": "Place", "id": "st_petersburg", "names": { "ru": "Санкт‑Петербург", "en": "St. Petersburg" }, "lat": 59.9343, "lon": 30.3351 },
+    { "kind": "Place", "id": "odessa", "names": { "ru": "Одесса", "en": "Odesa" }, "lat": 46.4825, "lon": 30.7233 },
+    { "kind": "Place", "id": "moscow", "names": { "ru": "Москва", "en": "Moscow" }, "lat": 55.7558, "lon": 37.6173 },
+    { "kind": "Place", "id": "bucharest", "names": { "ru": "Бухарест", "en": "Bucharest" }, "lat": 44.4268, "lon": 26.1025 },
+    { "kind": "Place", "id": "new_york", "names": { "ru": "Нью‑Йорк", "en": "New York" }, "lat": 40.7128, "lon": -74.006 },
+
+    { "kind": "Person", "id": "rode", "names": { "ru": "Пьер Роде", "en": "Pierre Rode", "orig": "Pierre Rode" }, "aliases": ["Rode"], "attrs": { "birth": { "year": 1774 }, "death": { "year": 1830 } } },
+    { "kind": "Person", "id": "boehm", "names": { "ru": "Иозеф Бём", "en": "Joseph Böhm", "orig": "Joseph Böhm" }, "aliases": ["Boehm","Böhm"], "attrs": { "birth": { "year": 1795 }, "death": { "year": 1876 } } },
+    { "kind": "Person", "id": "joachim", "names": { "ru": "Иозеф Иоахим", "en": "Joseph Joachim" }, "aliases": ["Joachim"], "attrs": { "birth": { "year": 1831 }, "death": { "year": 1907 } } },
+    { "kind": "Person", "id": "auer", "names": { "ru": "Леопольд Ауэр", "en": "Leopold Auer" }, "aliases": ["Auer"], "attrs": { "birth": { "year": 1845 }, "death": { "year": 1930 } } },
+    { "kind": "Person", "id": "heifetz", "names": { "ru": "Яша Хейфец", "en": "Jascha Heifetz" }, "aliases": ["Heifetz"], "attrs": { "birth": { "year": 1901 }, "death": { "year": 1987 } } },
+    { "kind": "Person", "id": "milstein", "names": { "ru": "Натан Мильштейн", "en": "Nathan Milstein" }, "aliases": ["Milstein"], "attrs": { "birth": { "year": 1904 }, "death": { "year": 1992 } } },
+    { "kind": "Person", "id": "oistrakh", "names": { "ru": "Давид Ойстрах", "en": "David Oistrakh" }, "aliases": ["Oistrakh"], "attrs": { "birth": { "year": 1908 }, "death": { "year": 1974 } } },
+    { "kind": "Person", "id": "stolyarsky", "names": { "ru": "Пётр Столярский", "en": "Pyotr Stolyarsky" }, "aliases": ["Stolyarsky"], "attrs": { "birth": { "year": 1871 }, "death": { "year": 1944 } } },
+    { "kind": "Person", "id": "menuhin", "names": { "ru": "Еху́ди Менухин", "en": "Yehudi Menuhin" }, "aliases": ["Menuhin"], "attrs": { "birth": { "year": 1916 }, "death": { "year": 1999 } } },
+    { "kind": "Person", "id": "enescu", "names": { "ru": "Джордже Энеску", "en": "George Enescu" }, "aliases": ["Enesco","Enescu"], "attrs": { "birth": { "year": 1881 }, "death": { "year": 1955 } } }
+  ],
+  "edges": [
+    { "id": "e1", "type": "teacher", "source": "rode", "target": "boehm", "start": { "year": 1810 }, "end": { "year": 1815 } },
+    { "id": "e2", "type": "teacher", "source": "boehm", "target": "joachim", "start": { "year": 1840 }, "end": { "year": 1848 } },
+    { "id": "e3", "type": "teacher", "source": "joachim", "target": "auer", "start": { "year": 1864 }, "end": { "year": 1867 } },
+    { "id": "e4", "type": "teacher", "source": "auer", "target": "heifetz", "start": { "year": 1910 }, "end": { "year": 1917 } },
+    { "id": "e5", "type": "teacher", "source": "auer", "target": "milstein", "start": { "year": 1912 }, "end": { "year": 1917 } },
+    { "id": "e6", "type": "teacher", "source": "stolyarsky", "target": "oistrakh", "start": { "year": 1923 }, "end": { "year": 1930 } },
+    { "id": "e7", "type": "teacher", "source": "enescu", "target": "menuhin", "start": { "year": 1927 }, "end": { "year": 1935 } }
+  ]
 }
 
 
