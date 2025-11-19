@@ -1,4 +1,4 @@
-const CACHE = "mc-v1";
+const CACHE = "mc-v2";
 self.addEventListener("install", (e) => {
   e.waitUntil((async () => {
     const scope = self.registration.scope;
