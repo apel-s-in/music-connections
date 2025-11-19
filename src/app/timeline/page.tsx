@@ -18,7 +18,19 @@ export default function TimelinePage() {
       setVer(`${ds.version} · ${new Date(ds.generatedAt).toISOString().slice(0, 10)}`);
       const persons = ds.nodes.filter((n: any) => n.kind === "Person");
       const bs: Band[] = [];
-      for (const p of persons) {.start.getFullYear());
+      for (const p of persons) {
+        const b = p.attrs?.birth?.year;
+        const d = p.attrs?.death?.year;
+        if (typeof b === "number" && typeof d === "number") {
+          bs.push({
+            id: p.id,
+            name: (p.names?.ru || p.names?.en || p.id)!,
+            start: new Date(b, 0, 1),
+            end: new Date(d, 0, 1)
+          });
+        }
+      }
+      bs.sort((a, b) => a.start.getFullYear() - b.start.getFullYear());
       // Избранное
       const f = new Set<string>();
       for (const b of bs) if (await isFavorite(b.id)) f.add(b.id);
@@ -72,4 +84,54 @@ export default function TimelinePage() {
           setFavs(next);
           // перерисуем только звезду — проще всего полностью перерисовать
           // (в рамках MVP это ок)
-          const ev = new Event
+          const ev = new Event("resize");
+          window.dispatchEvent(ev);
+        });
+    });
+
+    const zoom = d3.zoom()
+      .scaleExtent([0.5, 20])
+      .on("zoom", (ev) => {
+        const t = ev.transform;
+        const zx = t.rescaleX(x);
+        svg.selectAll("*").remove();
+        const axis2 = d3.axisBottom(zx).ticks(10).tickSizeOuter(0);
+        svg.append("g").attr("transform", `translate(0,${h - m.b})`).attr("color", "#6b7280").call(axis2 as any);
+        const y0x = 50;
+        bands.forEach((b, i) => {
+          const y = y0x + i * (rowH + gap);
+          svg.append("rect")
+            .attr("x", zx(b.start)).attr("y", y)
+            .attr("width", Math.max(2, zx(b.end) - zx(b.start))).attr("height", rowH)
+            .attr("rx", 8).attr("fill", "#2e3770").attr("opacity", 0.9);
+          svg.append("text")
+            .attr("x", zx(b.start) + 6).attr("y", y + rowH / 2 + 5)
+            .attr("font-size", 12).attr("fill", "#e6e7ee")
+            .text(`${b.name} (${b.start.getFullYear()}–${b.end.getFullYear()})`);
+          const starX = zx(range[0]) + 10;
+          svg.append("text")
+            .attr("x", starX).attr("y", y + rowH / 2 + 5)
+            .attr("font-size", 14).attr("fill", "#ffda00")
+            .attr("cursor", "pointer")
+            .text(favs.has(b.id) ? "★" : "☆")
+            .on("click", async () => {
+              const on = !favs.has(b.id);
+              await setFavorite(b.id, on);
+              const next = new Set(favs);
+              if (on) next.add(b.id); else next.delete(b.id);
+              setFavs(next);
+            });
+        });
+      });
+    svg.call(zoom as any);
+  }, [bands, range, favs]);
+
+  return (
+    <div>
+      <h2>Таймлайн</h2>
+      <svg ref={ref} />
+      <hr />
+      <div>Версия данных: {ver || "—"}</div>
+    </div>
+  );
+}
