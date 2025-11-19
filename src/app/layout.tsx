@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const basePath = process.env.GITHUB_ACTIONS === 'true' ? '/music-connections' : '';
   return (
     <html lang="ru">
       <head>
@@ -19,25 +20,29 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <header>
-          <div className="container" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <a href={`${basePath}/`}><b>Музыкальные связи</b></a>
-              <nav className="tabs">
-                <a className="tab" href={`${basePath}/timeline/`}>Таймлайн</a>
-                <a className="tab" href={`${basePath}/graph/`}>Граф</a>
-                <a className="tab" href={`${basePath}/map/`}>Карта</a>
-              </nav>
+          <div className="container" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <a href={`${basePath}/`} className="tab">Музыкальные связи</a>
+            <nav className="tabs" style={{ flexWrap: "wrap" }}>
+              <a className="tab" href={`${basePath}/timeline/`}>Таймлайн</a>
+              <a className="tab" href={`${basePath}/graph/`}>Граф</a>
+              <a className="tab" href={`${basePath}/map/`}>Карта</a>
+            </nav>
+            <div style={{ marginLeft: "auto" }}>
+              {/* Поиск по локальному датасету */}
+              {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+              {/* SearchBar — клиентский компонент */}
+              {/* @ts-expect-error Server/Client boundary ok (client comp inside layout body) */}
+              <(await import("../components/SearchBar")).default />
             </div>
-            <Controls />
+            {/* Глобальные клиентские инициализации (контраст, SW и т.п.) */}
+            {/* @ts-expect-error Server/Client boundary ok */}
+            <(await import("./Controls")).default />
           </div>
         </header>
-        <main className="container">{children}</main>
-        <footer>
-          <div className="container" style={{ fontSize: 12, color: "var(--muted)" }}>
-            © {new Date().getFullYear()} • Версия данных и сборки отображаются в футере экранов
-          </div>
-        </footer>
+        <main className="container" style={{ paddingTop: 12 }}>{children}</main>
+        <footer><div className="container">© {new Date().getFullYear()} • Версия данных и сборки отображаются в футере экранов</div></footer>
       </body>
     </html>
   );
 }
+
