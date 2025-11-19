@@ -1,12 +1,15 @@
-name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages (lockfile fix + export)
+
 on:
   push:
-    branches: [ main ]
+    branches: [ main ]   # если у тебя ветка master — замени на master
   workflow_dispatch: {}
+
 permissions:
-  contents: read
+  contents: write    # нужно, чтобы CI смог закоммитить обновлённый package-lock.json
   pages: write
   id-token: write
+
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -14,6 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,21 +26,38 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: npm
 
-      - name: Install
+      # Шаг 1: обновить только lock-файл (без установки модулей)
+      - name: Update lockfile (package-lock.json)
+        run: npm install --package-lock-only --no-audit --no-fund
+
+      # Шаг 2: закоммитить lock-файл, если он изменился
+      - name: Commit updated lockfile
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(ci): update package-lock.json from CI"
+          file_pattern: package-lock.json
+
+      # Шаг 3: установить зависимости строго по lock-файлу
+      - name: Install dependencies
         run: npm ci
 
+      # Сборка данных для public/data/*.json
       - name: Build dataset
         run: npm run build:data
 
+      # Экспорт статического сайта (Next.js output: export) с корректным basePath для Pages
       - name: Build static site
         env:
           GITHUB_ACTIONS: "true"
         run: npm run build
 
+      # Отключить Jekyll, чтобы GitHub Pages не скрывал папки, начинающиеся с подчеркивания
       - name: Add .nojekyll
         run: echo > out/.nojekyll
 
+      # Загрузить артефакт для публикации
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
