@@ -9,9 +9,9 @@ if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
 const now = new Date().toISOString();
 
-// ДЕМО-ДАТАСЕТ: 8 мест, 10 персон, 7 связей "teacher"
+// ДЕМО-ДАТАСЕТ: 8 мест, 10 персон, 3 события, связи "teacher" и "participated"
 const dataset = {
-  version: "demo-1.0",
+  version: "demo-1.1",
   generatedAt: now,
   nodes: [
     // Places
@@ -34,20 +34,33 @@ const dataset = {
     { kind: "Person", id: "oistrakh", names: { ru: "Давид Ойстрах", en: "David Oistrakh" }, aliases: ["Oistrakh"], attrs: { birth: { year: 1908 }, death: { year: 1974 } } },
     { kind: "Person", id: "stolyarsky", names: { ru: "Пётр Столярский", en: "Pyotr Stolyarsky" }, aliases: ["Stolyarsky"], attrs: { birth: { year: 1871 }, death: { year: 1944 } } },
     { kind: "Person", id: "menuhin", names: { ru: "Ехуди Менухин", en: "Yehudi Menuhin" }, aliases: ["Menuhin"], attrs: { birth: { year: 1916 }, death: { year: 1999 } } },
-    { kind: "Person", id: "enescu", names: { ru: "Джордже Энеску", en: "George Enescu" }, aliases: ["Enesco","Enescu"], attrs: { birth: { year: 1881 }, death: { year: 1955 } } }
+    { kind: "Person", id: "enescu", names: { ru: "Джордже Энеску", en: "George Enescu" }, aliases: ["Enesco","Enescu"], attrs: { birth: { year: 1881 }, death: { year: 1955 } } },
+
+    // Events (точечные/диапазонные)
+    { kind: "Event", id: "evt_auer_class_1912", names: { ru: "Класс Ауэра (концерт)", en: "Auer class concert" }, attrs: { date: { iso: "1912-03-10" } }, place: "st_petersburg", emoji: "🎻" },
+    { kind: "Event", id: "evt_menuhin_enescu_1927", names: { ru: "Уроки Менухина у Энеску", en: "Menuhin with Enescu" }, attrs: { range: { start: "1927-01-01", end: "1927-12-31" } }, place: "paris", emoji: "🎼" },
+    { kind: "Event", id: "evt_oistrakh_moscow_1935", names: { ru: "Концерт Ойстраха (Москва)", en: "Oistrakh concert, Moscow" }, attrs: { date: { iso: "1935-11-20" } }, place: "moscow", emoji: "⭐" }
   ],
   edges: [
+    // Учебные связи
     { id: "e1", type: "teacher", source: "rode", target: "boehm", start: { year: 1810 }, end: { year: 1815 } },
     { id: "e2", type: "teacher", source: "boehm", target: "joachim", start: { year: 1840 }, end: { year: 1848 } },
     { id: "e3", type: "teacher", source: "joachim", target: "auer", start: { year: 1864 }, end: { year: 1867 } },
     { id: "e4", type: "teacher", source: "auer", target: "heifetz", start: { year: 1910 }, end: { year: 1917 } },
     { id: "e5", type: "teacher", source: "auer", target: "milstein", start: { year: 1912 }, end: { year: 1917 } },
     { id: "e6", type: "teacher", source: "stolyarsky", target: "oistrakh", start: { year: 1923 }, end: { year: 1930 } },
-    { id: "e7", type: "teacher", source: "enescu", target: "menuhin", start: { year: 1927 }, end: { year: 1935 } }
+    { id: "e7", type: "teacher", source: "enescu", target: "menuhin", start: { year: 1927 }, end: { year: 1935 } },
+
+    // Участие в событиях (Event ←→ Person)
+    { id: "p1", type: "participated", source: "heifetz", target: "evt_auer_class_1912" },
+    { id: "p2", type: "participated", source: "milstein", target: "evt_auer_class_1912" },
+    { id: "p3", type: "participated", source: "menuhin", target: "evt_menuhin_enescu_1927" },
+    { id: "p4", type: "participated", source: "enescu", target: "evt_menuhin_enescu_1927" },
+    { id: "p5", type: "participated", source: "oistrakh", target: "evt_oistrakh_moscow_1935" }
   ]
 };
 
-// Простой search‑index (под текущий SearchBar)
+// Поисковый индекс
 const searchIndex = dataset.nodes.map((n) => ({
   id: n.id,
   kind: n.kind,
@@ -57,5 +70,4 @@ const searchIndex = dataset.nodes.map((n) => ({
 
 fs.writeFileSync(path.join(outDir, "connections.json"), JSON.stringify(dataset, null, 2), "utf8");
 fs.writeFileSync(path.join(outDir, "search-index.json"), JSON.stringify(searchIndex, null, 2), "utf8");
-
-console.log("Wrote public/data/connections.json & search-index.json (demo dataset).");
+console.log("Wrote public/data/connections.json & search-index.json (demo dataset with events).");
