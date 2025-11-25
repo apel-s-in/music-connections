@@ -12,8 +12,8 @@ export interface DateApprox {
 
 export interface Statement {
   pid: string; // P100, P200...
-  value: any;  // зависит от properties.yaml
-  qualifiers?: Record<string, any>;
+  value: unknown;
+  qualifiers?: Record<string, unknown>;
   sources?: Array<{ title: string; url?: string }>;
   confidence?: number;
 }
@@ -24,21 +24,51 @@ export interface BaseNode {
   names: LocaleString;
   descriptions?: LocaleString;
   aliases?: string[];
-  attrs?: Record<string, any>;
+  attrs?: Record<string, unknown>;
   statements?: Statement[];
 }
 
 export interface Person extends BaseNode { kind: "Person"; }
-export interface Work extends BaseNode { kind: "Work"; catalog?: Record<string, string>; composer?: string; year?: number; }
-export interface Instrument extends BaseNode { kind: "Instrument"; maker?: string; year?: number; model?: string; serial?: string; }
-export interface Place extends BaseNode { kind: "Place"; lat: number; lon: number; countries?: Array<{ name: LocaleString; from?: DateApprox; to?: DateApprox }>; }
-export interface Event extends BaseNode { kind: "Event"; date?: DateApprox; place?: string; }
+export interface Work extends BaseNode {
+  kind: "Work";
+  catalog?: Record<string, unknown>;
+  composer?: string;
+  year?: number;
+}
+export interface Instrument extends BaseNode {
+  kind: "Instrument";
+  maker?: string;
+  year?: number;
+  model?: string;
+  serial?: string;
+}
+export interface Place extends BaseNode {
+  kind: "Place";
+  lat: number;
+  lon: number;
+  countries?: Array<{ name: LocaleString; from?: DateApprox; to?: DateApprox }>;
+}
+export interface Event extends BaseNode {
+  kind: "Event";
+  date?: DateApprox;
+  place?: string;
+}
 
 export type Node = Person | Work | Instrument | Place | Event;
 
 export interface Edge {
   id: string;
-  type: "teacher" | "concert" | "family" | "luthier" | "friend" | "performed" | "used" | "residence" | "attended";
+  type:
+    | "teacher"
+    | "concert"
+    | "family"
+    | "luthier"
+    | "friend"
+    | "performed"
+    | "used"
+    | "residence"
+    | "attended"
+    | "participated";
   source: string;
   target: string;
   start?: DateApprox;
