@@ -217,7 +217,8 @@ export default function TimelinePage() {
 
       // мелкие засечки под каждый день, если достаточно места
       if (pxPerDay >= 6) {
-        const days = ax.ticks(d3.timeDay.every(1));
+        const dayInterval = d3.timeDay.every(1) ?? d3.timeDay;
+        const days = ax.ticks(dayInterval);
         gRuler.selectAll("line.day")
           .data(days)
           .enter()
