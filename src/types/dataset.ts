@@ -25,7 +25,7 @@ export interface BaseNode {
   names: LocaleString;
   descriptions?: LocaleString;
   aliases?: string[];
-  /** Для разных kind переопределяется более точным типом */
+  /** Для разных kind уточняется собственным типом */
   attrs?: unknown;
   statements?: Statement[];
 }
@@ -63,7 +63,7 @@ export interface Place extends BaseNode {
   countries?: Array<{ name: LocaleString; from?: DateApprox; to?: DateApprox }>;
 }
 
-/** attrs для событий — соответствуют тому, что пишет scripts/build-connections.js */
+/** attrs для событий — соответствует scripts/build-connections.js */
 export interface EventAttrs {
   date?: { iso?: string };
   range?: { start?: string; end?: string };
@@ -90,7 +90,7 @@ export interface Edge {
     | "used"
     | "residence"
     | "attended"
-    | "participated"; // используется в build-скрипте
+    | "participated";
   source: string;
   target: string;
   start?: DateApprox;
@@ -101,9 +101,6 @@ export interface Edge {
 export interface Dataset {
   nodes: Node[];
   edges: Edge[];
-  generated
-- Закоммить эту замену в main, дождаться GitHub Actions.  
-- Если страница была открыта — обнови кэш SW (DevTools → Application → Service Workers → Unregister → Reload), чтобы подтянулся свежий connections.json.
-
-Замеченные несоответствия на будущее
-- В Event мы используем attrs.date/attrs.range (как в scripts/build-connections.js). Если решишь хранить дату события на верхнем уровне (Event.date: DateApprox), скажи — синхронизирую build‑скрипт и тайпинги.
+  generatedAt: string;
+  version: string;
+}
